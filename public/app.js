@@ -115,14 +115,15 @@ searchForm.addEventListener('submit', async (e) => {
       throw new Error('You must be logged in to search products');
     }
     
-    const response = await fetch(`${API_URL}/products/search`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${userInfo.token}`,
-      },
-      body: JSON.stringify({ itemNumbers }),
-    });
+const response = await fetch(`${API_URL}/products/search`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${userInfo.token}`,  // Make sure this line is correct
+  },
+  body: JSON.stringify({ itemNumbers }),
+});
+
     
     const data = await response.json();
     
