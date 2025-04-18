@@ -4,33 +4,30 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 
-// Middleware to protect routes - TEMPORARY PERMISSIVE VERSION
+// Middleware to protect routes
 const protect = async (req, res, next) => {
   let token;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
       req.user = await User.findById(decoded.id).select('-password');
+      
+      if (!req.user) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+      
       next();
     } catch (error) {
       console.error('Token verification error:', error);
-      // TEMPORARY: Continue anyway instead of returning error
-      req.user = { _id: '000000000000000000000000', isAdmin: true };
-      next();
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   } else {
-    // TEMPORARY: Allow access even without token
-    console.log('No authorization header, but allowing access temporarily');
-    req.user = { _id: '000000000000000000000000', isAdmin: true };
-    next();
+    return res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
-
 
 // @desc    Auth user & get token
 // @route   POST /api/users/login
@@ -103,6 +100,34 @@ router.get('/profile', protect, async (req, res) => {
   }
 });
 
+// @desc    Update user profile
+// @route   PUT /api/users/profile
+// @access  Private
+router.put('/profile', protect, async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    user.name = req.body.name || user.name;
+    user.email = req.body.email || user.email;
+    
+    if (req.body.password) {
+      user.password = req.body.password;
+    }
+
+    const updatedUser = await user.save();
+
+    res.json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      isAdmin: updatedUser.isAdmin,
+      token: generateToken(updatedUser._id),
+    });
+  } else {
+    res.status(404).json({ message: 'User not found' });
+  }
+});
+
 // Generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -110,4 +135,8 @@ const generateToken = (id) => {
   });
 };
 
-module.exports = router;
+// Export both the router and the protect middleware
+module.exports = {
+  router,
+  protect
+};
