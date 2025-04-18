@@ -1,5 +1,5 @@
 // API URL - Change this to your server URL when deployed
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://proerp-b0dfb327892c.herokuapp.com/api';
 
 // DOM Elements
 const loginContainer = document.getElementById('login-container');
