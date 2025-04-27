@@ -5,31 +5,6 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const { protect } = require('../middleware/authMiddleware');
 
-// Middleware to protect routes
-const protect = async (req, res, next) => {
-  let token;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      req.user = await User.findById(decoded.id).select('-password');
-      
-      if (!req.user) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-      
-      next();
-    } catch (error) {
-      console.error('Token verification error:', error);
-      return res.status(401).json({ message: 'Not authorized, token failed' });
-    }
-  } else {
-    return res.status(401).json({ message: 'Not authorized, no token' });
-  }
-};
-
 // @desc    Auth user & get token
 // @route   POST /api/users/login
 // @access  Public
@@ -136,6 +111,5 @@ const generateToken = (id) => {
   });
 };
 
-// Export both the router and the protect middleware
+// Export only the router
 module.exports = router;
-};
