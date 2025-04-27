@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const { protect } = require('../middleware/authMiddleware');
 
 // Middleware to protect routes
 const protect = async (req, res, next) => {
@@ -136,7 +137,5 @@ const generateToken = (id) => {
 };
 
 // Export both the router and the protect middleware
-module.exports = {
-  router,
-  protect
+module.exports = router;
 };
