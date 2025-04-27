@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(cors());
 
 // Routes
-app.use('/api/users', require('./routes/userRoutes').router);
+app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 
 // Serve static assets in production
