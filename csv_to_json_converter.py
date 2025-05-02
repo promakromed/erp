@@ -4,8 +4,11 @@ import json
 import os
 from collections import defaultdict
 
-# Configuration
-DATA_DIR = '/home/ubuntu/erp/data'
+# --- Determine the script's directory and set relative paths ---
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR, 'data') # Assumes 'data' directory is in the same dir as the script
+
+# Configuration using relative paths
 OUTPUT_SUPPLIERS_FILE = os.path.join(DATA_DIR, 'suppliers.json')
 OUTPUT_PRODUCTS_FILE = os.path.join(DATA_DIR, 'products_new_format.json')
 SUPPLIER_FILES = {
@@ -32,6 +35,9 @@ products_data = defaultdict(lambda: {'itemNo': None, 'description': None, 'manuf
 all_suppliers = set()
 
 print("Starting CSV processing...")
+
+# Ensure data directory exists before writing
+os.makedirs(DATA_DIR, exist_ok=True)
 
 for supplier_name, file_path in SUPPLIER_FILES.items():
     print(f"Processing file for supplier: {supplier_name} from {file_path}")
