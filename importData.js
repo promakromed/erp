@@ -18,9 +18,7 @@ const User = require("./models/userModel");
 // --- Function to read all data from stdin ---
 const readStdin = () => {
   return new Promise((resolve, reject) => {
-    let data = 
-""
-;
+    let data = "";
     process.stdin.setEncoding("utf8");
     process.stdin.on("readable", () => {
       let chunk;
@@ -62,8 +60,7 @@ const main = async () => {
 
     if (parts.length !== 2) {
       throw new Error(
-`Expected 2 parts separated by delimiter, but found ${parts.length}. Stdin data: ${stdinData.substring(0, 500)}...
-`
+        `Expected 2 parts separated by delimiter, but found ${parts.length}. Stdin data: ${stdinData.substring(0, 500)}...`
       );
     }
 
@@ -149,16 +146,23 @@ const upsertData = async (suppliersList, productsList) => {
       }).filter(offer => offer !== null); // Remove any null offers
 
       // Prepare the update payload for the product
-      const updatePayload = {
-        ...product,
-        supplierOffers: updatedOffers
+      // Explicitly list fields to $set from the parsed JSON data
+      const setPayload = {
+        itemNo: product.itemNo,
+        description: product.description,
+        manufacturer: product.manufacturer,
+        // Add any other fields from the JSON that should be preserved/updated
+        supplierOffers: updatedOffers // The newly constructed offers array
       };
 
       return {
         updateOne: {
           filter: { itemNo: product.itemNo },
-          update: { $set: updatePayload },
-          upsert: true
+          update: {
+            $set: setPayload, // Set the fields we want based on input JSON
+            $unset: { suppliers: "" } // Explicitly remove the old 'suppliers' field
+          },
+          upsert: true // Create if not exists, otherwise update using $set and $unset
         }
       };
     });
