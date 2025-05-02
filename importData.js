@@ -47,7 +47,14 @@ const main = async () => {
     process.exit(1);
   }
 
-  // Read and parse data from stdin
+  // *** Check for delete flag BEFORE trying to read stdin ***
+  if (process.argv.includes("-d")) {
+    await deleteData();
+    // deleteData function already handles process.exit()
+    return; // Exit main function after deletion
+  }
+
+  // --- If not deleting, proceed to read stdin and upsert ---
   let suppliersList = [];
   let productsList = [];
 
@@ -75,13 +82,9 @@ const main = async () => {
     process.exit(1);
   }
 
-  // Determine which operation to perform based on command line args
-  if (process.argv.includes("-d")) {
-    await deleteData();
-  } else {
-    // Default action is now upsert
-    await upsertData(suppliersList, productsList);
-  }
+  // Default action is upsert (since -d was handled above)
+  await upsertData(suppliersList, productsList);
+
 };
 
 // Import/Update data using Upsert (now accepts lists as arguments)
