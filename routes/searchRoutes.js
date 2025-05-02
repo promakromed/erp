@@ -52,7 +52,7 @@ router.post("/", protect, async (req, res) => {
 
     // Find products and populate supplier details within supplierOffers
     const products = await Product.find({ itemNo: { $in: itemNoArray } })
-                                  .populate('supplierOffers.supplier', 'name'); // Populate supplier name
+                                  .populate({ path: 'supplierOffers.supplier', select: 'name' }); // Corrected populate syntax
 
     let uniqueSuppliers = new Set(); // To collect unique supplier names for dynamic headers
 
@@ -84,9 +84,11 @@ router.post("/", protect, async (req, res) => {
               usdEquivalent = price;
               displayString = `${formatCurrencyNumber(price)} USD`;
             } else if (currency === "GBP" && gbpToUsdRate === null) {
-              usdEquivalent = Infinity;
+              // If GBP rate fails, treat GBP price as non-comparable for winner determination
+              usdEquivalent = Infinity; 
               displayString = `${formatCurrencyNumber(price)} GBP`;
             } else {
+              // Other currencies are not directly comparable
               usdEquivalent = Infinity;
               displayString = `${formatCurrencyNumber(price)} ${currency}`;
             }
