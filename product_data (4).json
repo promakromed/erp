@@ -1,0 +1,2090 @@
+[
+  {
+    "itemNo": "00.1001",
+    "description": "CYTOSCAN AIR TOKENS, 24 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 491.63,
+        "currency": "GBP",
+        "catalogNo": "00.1001"
+      },
+      {
+        "name": "Mizala",
+        "price": 499.2,
+        "currency": "USD",
+        "catalogNo": "00.1001"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1001-RR",
+    "description": "CYTOSCAN AIR TOKENS, 24 RR EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 2307.19,
+        "currency": "GBP",
+        "catalogNo": "00.1001-RR"
+      },
+      {
+        "name": "Mizala",
+        "price": 1998.75,
+        "currency": "USD",
+        "catalogNo": "00.1001-RR"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1003",
+    "description": "CYTOSCAN AIR TOKENS, 96 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 1966.5,
+        "currency": "GBP",
+        "catalogNo": "00.1003"
+      },
+      {
+        "name": "Mizala",
+        "price": 1995.5,
+        "currency": "USD",
+        "catalogNo": "00.1003"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1003-RR",
+    "description": "CYTOSCAN AIR TOKENS, 96 RR EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 9228.75,
+        "currency": "GBP",
+        "catalogNo": "00.1003-RR"
+      },
+      {
+        "name": "Mizala",
+        "price": 7995.0,
+        "currency": "USD",
+        "catalogNo": "00.1003-RR"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1004",
+    "description": "CYTOSCAN AIR TOKENS, 384 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 7848.75,
+        "currency": "GBP",
+        "catalogNo": "00.1004"
+      },
+      {
+        "name": "Mizala",
+        "price": 7982.0,
+        "currency": "USD",
+        "catalogNo": "00.1004"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1004-RR",
+    "description": "CYTOSCAN AIR TOKENS, 384 RR EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 36897.75,
+        "currency": "GBP",
+        "catalogNo": "00.1004-RR"
+      },
+      {
+        "name": "Mizala",
+        "price": 31980.0,
+        "currency": "USD",
+        "catalogNo": "00.1004-RR"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1050",
+    "description": "SVC- SPECIAL HUMAN ANALYSIS SERVICE",
+    "size": "SERVICE",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 5540.7,
+        "currency": "GBP",
+        "catalogNo": "00.1050"
+      },
+      {
+        "name": "Mizala",
+        "price": 4225.0,
+        "currency": "USD",
+        "catalogNo": "00.1050"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1051",
+    "description": "SVC- SPECIAL NONHUMAN ANALYSIS SERVICE",
+    "size": "SERVICE",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 5540.7,
+        "currency": "GBP",
+        "catalogNo": "00.1051"
+      },
+      {
+        "name": "Mizala",
+        "price": 4225.0,
+        "currency": "USD",
+        "catalogNo": "00.1051"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1052",
+    "description": "SAMPLESSHIPUSA EA",
+    "size": "EA",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 119.6,
+        "currency": "GBP",
+        "catalogNo": "00.1052"
+      },
+      {
+        "name": "Mizala",
+        "price": 78.0,
+        "currency": "USD",
+        "catalogNo": "00.1052"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1053",
+    "description": "SAMPLESSHIPDK EA",
+    "size": "EA",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 261.05,
+        "currency": "GBP",
+        "catalogNo": "00.1053"
+      },
+      {
+        "name": "Mizala",
+        "price": 169.65,
+        "currency": "USD",
+        "catalogNo": "00.1053"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1064",
+    "description": "BLOODGENOMIX REP OUTPUT 1X EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 8.4,
+        "currency": "GBP",
+        "catalogNo": "00.1064"
+      },
+      {
+        "name": "Mizala",
+        "price": 5.85,
+        "currency": "USD",
+        "catalogNo": "00.1064"
+      }
+    ]
+  },
+  {
+    "itemNo": "00.1065",
+    "description": "BLOODGENOMIX REP OUTPUT 768X EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 6446.9,
+        "currency": "GBP",
+        "catalogNo": "00.1065"
+      },
+      {
+        "name": "Mizala",
+        "price": 4492.8,
+        "currency": "USD",
+        "catalogNo": "00.1065"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.398",
+    "description": "MICROARRAY FIELD TRAINING 1DAY EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 3421.25,
+        "currency": "GBP",
+        "catalogNo": "000.398"
+      },
+      {
+        "name": "Mizala",
+        "price": 1933.75,
+        "currency": "USD",
+        "catalogNo": "000.398"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.747",
+    "description": "MYGENECHIP RESEQ 169F MASK FEE EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 27232.0,
+        "currency": "GBP",
+        "catalogNo": "000.747"
+      },
+      {
+        "name": "Mizala",
+        "price": 23081.5,
+        "currency": "USD",
+        "catalogNo": "000.747"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.750",
+    "description": "MYGENECHIP RESEQ 100F MASK FEE EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 32648.5,
+        "currency": "GBP",
+        "catalogNo": "000.750"
+      },
+      {
+        "name": "Mizala",
+        "price": 27696.5,
+        "currency": "USD",
+        "catalogNo": "000.750"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.802",
+    "description": "CYTOSCAN NEW USER TRAINING 4D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 13466.5,
+        "currency": "GBP",
+        "catalogNo": "000.802"
+      },
+      {
+        "name": "Mizala",
+        "price": 9977.5,
+        "currency": "USD",
+        "catalogNo": "000.802"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.803",
+    "description": "CYTOSCAN UPGRADE TRAINING 1.5D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 5071.5,
+        "currency": "GBP",
+        "catalogNo": "000.803"
+      },
+      {
+        "name": "Mizala",
+        "price": 2866.5,
+        "currency": "USD",
+        "catalogNo": "000.803"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.804",
+    "description": "AXIOM NEW USER TRAINING 5D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 16042.5,
+        "currency": "GBP",
+        "catalogNo": "000.804"
+      },
+      {
+        "name": "Mizala",
+        "price": 11901.5,
+        "currency": "USD",
+        "catalogNo": "000.804"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.823",
+    "description": "SNP6 TRAINING GCS3000 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 11914.0,
+        "currency": "GBP",
+        "catalogNo": "000.823"
+      },
+      {
+        "name": "Mizala",
+        "price": 9997.0,
+        "currency": "USD",
+        "catalogNo": "000.823"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.824",
+    "description": "GTMC EXPRESSION TRAINING 4D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 13466.5,
+        "currency": "GBP",
+        "catalogNo": "000.824"
+      },
+      {
+        "name": "Mizala",
+        "price": 9977.5,
+        "currency": "USD",
+        "catalogNo": "000.824"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.825",
+    "description": "GCS3000 EXPRESSION TRAINING 3D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 10085.5,
+        "currency": "GBP",
+        "catalogNo": "000.825"
+      },
+      {
+        "name": "Mizala",
+        "price": 5700.5,
+        "currency": "USD",
+        "catalogNo": "000.825"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.826",
+    "description": "MICROARRAY TRAINING CENTER 1D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 1828.5,
+        "currency": "GBP",
+        "catalogNo": "000.826"
+      },
+      {
+        "name": "Mizala",
+        "price": 1033.5,
+        "currency": "USD",
+        "catalogNo": "000.826"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.827",
+    "description": "WT HT AUTO TRAINING GCS3000 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 9786.5,
+        "currency": "GBP",
+        "catalogNo": "000.827"
+      },
+      {
+        "name": "Mizala",
+        "price": 8281.0,
+        "currency": "USD",
+        "catalogNo": "000.827"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.828",
+    "description": "PROPEL INSTALLATION WORKFLOW EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 10085.5,
+        "currency": "GBP",
+        "catalogNo": "000.828"
+      },
+      {
+        "name": "Mizala",
+        "price": 5700.5,
+        "currency": "USD",
+        "catalogNo": "000.828"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.830",
+    "description": "SNP6 TRAINING DX2 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 11914.0,
+        "currency": "GBP",
+        "catalogNo": "000.830"
+      },
+      {
+        "name": "Mizala",
+        "price": 9997.0,
+        "currency": "USD",
+        "catalogNo": "000.830"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.831",
+    "description": "3IVT EXPRESS TRAINING DX2 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 5111.75,
+        "currency": "GBP",
+        "catalogNo": "000.831"
+      },
+      {
+        "name": "Mizala",
+        "price": 4355.0,
+        "currency": "USD",
+        "catalogNo": "000.831"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.832",
+    "description": "WT EXPRESS TRAINING DX2 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 5111.75,
+        "currency": "GBP",
+        "catalogNo": "000.832"
+      },
+      {
+        "name": "Mizala",
+        "price": 4355.0,
+        "currency": "USD",
+        "catalogNo": "000.832"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.833",
+    "description": "TRN, MICROARRAY FAS, CS, 0.5D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 2932.5,
+        "currency": "GBP",
+        "catalogNo": "000.833"
+      },
+      {
+        "name": "Mizala",
+        "price": 1417.0,
+        "currency": "USD",
+        "catalogNo": "000.833"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.834",
+    "description": "TRN, RH MICROARRAY, 5 DAY, CS EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 10384.5,
+        "currency": "GBP",
+        "catalogNo": "000.834"
+      },
+      {
+        "name": "Mizala",
+        "price": 8788.0,
+        "currency": "USD",
+        "catalogNo": "000.834"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.835",
+    "description": "CONSULTATIVE SERVICES EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 10384.5,
+        "currency": "GBP",
+        "catalogNo": "000.835"
+      },
+      {
+        "name": "Mizala",
+        "price": 8788.0,
+        "currency": "USD",
+        "catalogNo": "000.835"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.836",
+    "description": "3IVT EXPRESS TRAIN GENETITAN EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 5267.0,
+        "currency": "GBP",
+        "catalogNo": "000.836"
+      },
+      {
+        "name": "Mizala",
+        "price": 4459.0,
+        "currency": "USD",
+        "catalogNo": "000.836"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.837",
+    "description": "10HR CYTOSCAN DATAANALYSIS TRN EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 3478.75,
+        "currency": "GBP",
+        "catalogNo": "000.837"
+      },
+      {
+        "name": "Mizala",
+        "price": 1966.25,
+        "currency": "USD",
+        "catalogNo": "000.837"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.871",
+    "description": "TRAINING, CYTOSCAN FAS AUTO EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 8297.25,
+        "currency": "GBP",
+        "catalogNo": "000.871"
+      },
+      {
+        "name": "Mizala",
+        "price": 9002.5,
+        "currency": "USD",
+        "catalogNo": "000.871"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.878",
+    "description": "GCS3000 ONCOSCAN TRAINING 3D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 10085.5,
+        "currency": "GBP",
+        "catalogNo": "000.878"
+      },
+      {
+        "name": "Mizala",
+        "price": 5700.5,
+        "currency": "USD",
+        "catalogNo": "000.878"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.882",
+    "description": "CYTOSCAN DX UPGRADE CERT 1.5D TRAINING",
+    "size": "TRAINING",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 3803.63,
+        "currency": "GBP",
+        "catalogNo": "000.882"
+      },
+      {
+        "name": "Mizala",
+        "price": 2866.5,
+        "currency": "USD",
+        "catalogNo": "000.882"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.883",
+    "description": "CYTOSCAN DX NEW USER CERT 4D EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 13466.5,
+        "currency": "GBP",
+        "catalogNo": "000.883"
+      },
+      {
+        "name": "Mizala",
+        "price": 9977.5,
+        "currency": "USD",
+        "catalogNo": "000.883"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.910",
+    "description": "EUREKA GENOMICS SOLUTION DESIGN SVC",
+    "size": "DESIGN SVC",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 73.96,
+        "currency": "GBP",
+        "catalogNo": "000.910"
+      },
+      {
+        "name": "Mizala",
+        "price": 78.0,
+        "currency": "USD",
+        "catalogNo": "000.910"
+      }
+    ]
+  },
+  {
+    "itemNo": "000.926",
+    "description": "EUREKA FAS ONSITE TRAINING EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 7337.0,
+        "currency": "GBP",
+        "catalogNo": "000.926"
+      },
+      {
+        "name": "Mizala",
+        "price": 6266.0,
+        "currency": "USD",
+        "catalogNo": "000.926"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0000-50",
+    "description": "10X COATING BUFFER 2.5 mL x 480",
+    "size": "2.5 mL x 480",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 22.39,
+        "currency": "GBP",
+        "catalogNo": "00-0000-50"
+      },
+      {
+        "name": "Mizala",
+        "price": 22.43,
+        "currency": "USD",
+        "catalogNo": "00-0000-50"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0000-53",
+    "description": "10X COATING BUFFER 12 mL x 135",
+    "size": "12 mL x 135",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 44.85,
+        "currency": "GBP",
+        "catalogNo": "00-0000-53"
+      },
+      {
+        "name": "Mizala",
+        "price": 45.01,
+        "currency": "USD",
+        "catalogNo": "00-0000-53"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0044-59",
+    "description": "ELISA / ELISPOT COATING BUFFER POWDER",
+    "size": "POWDER",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 29.3,
+        "currency": "GBP",
+        "catalogNo": "00-0044-59"
+      },
+      {
+        "name": "Mizala",
+        "price": 36.24,
+        "currency": "USD",
+        "catalogNo": "00-0044-59"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0079",
+    "description": "FS450 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 46989.0,
+        "currency": "GBP",
+        "catalogNo": "00-0079"
+      },
+      {
+        "name": "Mizala",
+        "price": 35880.0,
+        "currency": "USD",
+        "catalogNo": "00-0079"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0079RS",
+    "description": "PREOWNED GCS3000 FLUIDICS ST EA- EACH",
+    "size": "EA- EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 21286.5,
+        "currency": "GBP",
+        "catalogNo": "00-0079RS"
+      },
+      {
+        "name": "Mizala",
+        "price": 15593.5,
+        "currency": "USD",
+        "catalogNo": "00-0079RS"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0093",
+    "description": "HOLDER FOR EXT BARCODE READER EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 672.75,
+        "currency": "GBP",
+        "catalogNo": "00-0093"
+      },
+      {
+        "name": "Mizala",
+        "price": 698.1,
+        "currency": "USD",
+        "catalogNo": "00-0093"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0094",
+    "description": "AUTOLOADER CAROUSEL EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 995.9,
+        "currency": "GBP",
+        "catalogNo": "00-0094"
+      },
+      {
+        "name": "Mizala",
+        "price": 878.8,
+        "currency": "USD",
+        "catalogNo": "00-0094"
+      }
+    ]
+  },
+  {
+    "itemNo": "000103",
+    "description": "BRDU LABELING REAGENT 15 ML",
+    "size": "15 ML",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 78.49,
+        "currency": "GBP",
+        "catalogNo": "000103"
+      },
+      {
+        "name": "Mizala",
+        "price": 118.3,
+        "currency": "USD",
+        "catalogNo": "000103"
+      }
+    ]
+  },
+  {
+    "itemNo": "000105",
+    "description": "MEMBRANE BLOCKING SOLUTION 1 L",
+    "size": "1 L",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 334.65,
+        "currency": "GBP",
+        "catalogNo": "000105"
+      },
+      {
+        "name": "Mizala",
+        "price": 379.6,
+        "currency": "USD",
+        "catalogNo": "000105"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0105TS",
+    "description": "GCS3000 NODE WW EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 76130.0,
+        "currency": "GBP",
+        "catalogNo": "00-0105TS"
+      },
+      {
+        "name": "Mizala",
+        "price": 67600.0,
+        "currency": "USD",
+        "catalogNo": "00-0105TS"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0115",
+    "description": "GCS 3000 AUTOLOADER UPGRADE EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 2014.8,
+        "currency": "GBP",
+        "catalogNo": "00-0115"
+      },
+      {
+        "name": "Mizala",
+        "price": 1410.5,
+        "currency": "USD",
+        "catalogNo": "00-0115"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0129RS",
+    "description": "PREOWNED GCS3000 AUTOLOADEREBR EA- EACH",
+    "size": "EA- EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 10959.5,
+        "currency": "GBP",
+        "catalogNo": "00-0129RS"
+      },
+      {
+        "name": "Mizala",
+        "price": 8027.5,
+        "currency": "USD",
+        "catalogNo": "00-0129RS"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0179",
+    "description": "2D HAND HELD BARCODE READER EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 983.25,
+        "currency": "GBP",
+        "catalogNo": "00-0179"
+      },
+      {
+        "name": "Mizala",
+        "price": 1158.3,
+        "currency": "USD",
+        "catalogNo": "00-0179"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0180",
+    "description": "7G WORKSTATION & MONITOR SYSTEM",
+    "size": "SYSTEM",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 6831.0,
+        "currency": "GBP",
+        "catalogNo": "00-0180"
+      },
+      {
+        "name": "Mizala",
+        "price": 6181.5,
+        "currency": "USD",
+        "catalogNo": "00-0180"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0186",
+    "description": "GCS3000 TG SYSTEM WW EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 248515.0,
+        "currency": "GBP",
+        "catalogNo": "00-0186"
+      },
+      {
+        "name": "Mizala",
+        "price": 219700.0,
+        "currency": "USD",
+        "catalogNo": "00-0186"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0186G",
+    "description": "GCS3000 TG SYSTEM WW, GA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 275655.0,
+        "currency": "GBP",
+        "catalogNo": "00-0186G"
+      },
+      {
+        "name": "Mizala",
+        "price": 232960.0,
+        "currency": "USD",
+        "catalogNo": "00-0186G"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0210",
+    "description": "SCGC30007G EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 174225.0,
+        "currency": "GBP",
+        "catalogNo": "00-0210"
+      },
+      {
+        "name": "Mizala",
+        "price": 135330.0,
+        "currency": "USD",
+        "catalogNo": "00-0210"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0210RS",
+    "description": "PREOWNED GCS3000 SCANNER 7G EA- EACH",
+    "size": "EA- EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 82225.0,
+        "currency": "GBP",
+        "catalogNo": "00-0210RS"
+      },
+      {
+        "name": "Mizala",
+        "price": 46475.0,
+        "currency": "USD",
+        "catalogNo": "00-0210RS"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0218",
+    "description": "GCS3000 7G W/WORKSTATION & AL EA- EACH",
+    "size": "EA- EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 148925.0,
+        "currency": "GBP",
+        "catalogNo": "00-0218"
+      },
+      {
+        "name": "Mizala",
+        "price": 113620.0,
+        "currency": "USD",
+        "catalogNo": "00-0218"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0218G",
+    "description": "GCS3000 W/WORKST. & AL WW,GA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 213785.0,
+        "currency": "GBP",
+        "catalogNo": "00-0218G"
+      },
+      {
+        "name": "Mizala",
+        "price": 188240.0,
+        "currency": "USD",
+        "catalogNo": "00-0218G"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0309",
+    "description": "GENETITAN SINGLE CHANNEL EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 106605.0,
+        "currency": "GBP",
+        "catalogNo": "00-0309"
+      },
+      {
+        "name": "Mizala",
+        "price": 78130.0,
+        "currency": "USD",
+        "catalogNo": "00-0309"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0331",
+    "description": "HYB OVEN 645 FINAL ASSY EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 8878.0,
+        "currency": "GBP",
+        "catalogNo": "00-0331"
+      },
+      {
+        "name": "Mizala",
+        "price": 7559.5,
+        "currency": "USD",
+        "catalogNo": "00-0331"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0334",
+    "description": "GCS3000DX V.2 INSTRUMENT SYSTEM",
+    "size": "SYSTEM",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 162955.0,
+        "currency": "GBP",
+        "catalogNo": "00-0334"
+      },
+      {
+        "name": "Mizala",
+        "price": 124215.0,
+        "currency": "USD",
+        "catalogNo": "00-0334"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0335",
+    "description": "FS450DX V.2 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 39157.5,
+        "currency": "GBP",
+        "catalogNo": "00-0335"
+      },
+      {
+        "name": "Mizala",
+        "price": 39845.0,
+        "currency": "USD",
+        "catalogNo": "00-0335"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0336",
+    "description": "GCS3000 DX V.2 EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 139725.0,
+        "currency": "GBP",
+        "catalogNo": "00-0336"
+      },
+      {
+        "name": "Mizala",
+        "price": 144430.0,
+        "currency": "USD",
+        "catalogNo": "00-0336"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0338",
+    "description": "KIT, GCS3000DX V.2 SYSTEM UPGRADE",
+    "size": "UPGRADE",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 11040.0,
+        "currency": "GBP",
+        "catalogNo": "00-0338"
+      },
+      {
+        "name": "Mizala",
+        "price": 11823.5,
+        "currency": "USD",
+        "catalogNo": "00-0338"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0356",
+    "description": "96F, GENETITAN EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 183195.0,
+        "currency": "GBP",
+        "catalogNo": "00-0356"
+      },
+      {
+        "name": "Mizala",
+        "price": 134160.0,
+        "currency": "USD",
+        "catalogNo": "00-0356"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0356R",
+    "description": "REFURBED 96F, GENETITAN FLUIDICS",
+    "size": "FLUIDICS",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 249320.0,
+        "currency": "GBP",
+        "catalogNo": "00-0356R"
+      },
+      {
+        "name": "Mizala",
+        "price": 182195.0,
+        "currency": "USD",
+        "catalogNo": "00-0356R"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0359",
+    "description": "GENETITAN SYSTEM UPGRADE NA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 216545.0,
+        "currency": "GBP",
+        "catalogNo": "00-0359"
+      },
+      {
+        "name": "Mizala",
+        "price": 184665.0,
+        "currency": "USD",
+        "catalogNo": "00-0359"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0360R",
+    "description": "GENETITAN EXPRESSION RGT RENTA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 395485.0,
+        "currency": "GBP",
+        "catalogNo": "00-0360R"
+      },
+      {
+        "name": "Mizala",
+        "price": 279565.0,
+        "currency": "USD",
+        "catalogNo": "00-0360R"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0362",
+    "description": "GCS3000 7G W/AL & 2 FS450 BUNDLE WW",
+    "size": "BUNDLE WW",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 256565.0,
+        "currency": "GBP",
+        "catalogNo": "00-0362"
+      },
+      {
+        "name": "Mizala",
+        "price": 218335.0,
+        "currency": "USD",
+        "catalogNo": "00-0362"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0362G",
+    "description": "GCS3000 GENOTYPING SYSTEM BUND WW AND GA",
+    "size": "WW AND GA",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 287155.0,
+        "currency": "GBP",
+        "catalogNo": "00-0362G"
+      },
+      {
+        "name": "Mizala",
+        "price": 244335.0,
+        "currency": "USD",
+        "catalogNo": "00-0362G"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0363",
+    "description": "GENETITAN SYSTEM INTERNATIONAL EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 325795.0,
+        "currency": "GBP",
+        "catalogNo": "00-0363"
+      },
+      {
+        "name": "Mizala",
+        "price": 276770.0,
+        "currency": "USD",
+        "catalogNo": "00-0363"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0370",
+    "description": "SCANNER, GENETITAN MC EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 231495.0,
+        "currency": "GBP",
+        "catalogNo": "00-0370"
+      },
+      {
+        "name": "Mizala",
+        "price": 169585.0,
+        "currency": "USD",
+        "catalogNo": "00-0370"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0370R",
+    "description": "REFURBED SCANNER, GENETITAN EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 334650.0,
+        "currency": "GBP",
+        "catalogNo": "00-0370R"
+      },
+      {
+        "name": "Mizala",
+        "price": 244985.0,
+        "currency": "USD",
+        "catalogNo": "00-0370R"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0372",
+    "description": "GENETITAN MC SYSTEM NA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 291640.0,
+        "currency": "GBP",
+        "catalogNo": "00-0372"
+      },
+      {
+        "name": "Mizala",
+        "price": 216450.0,
+        "currency": "USD",
+        "catalogNo": "00-0372"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0372AG",
+    "description": "GENETITAN MC SYSTEM NA AG EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 323955.0,
+        "currency": "GBP",
+        "catalogNo": "00-0372AG"
+      },
+      {
+        "name": "Mizala",
+        "price": 240435.0,
+        "currency": "USD",
+        "catalogNo": "00-0372AG"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0372C",
+    "description": "GENETITAN MC SYSTEM NA, CA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 355005.0,
+        "currency": "GBP",
+        "catalogNo": "00-0372C"
+      },
+      {
+        "name": "Mizala",
+        "price": 263380.0,
+        "currency": "USD",
+        "catalogNo": "00-0372C"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0372E",
+    "description": "GENETITAN MC SYSTEM NA, EA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 385595.0,
+        "currency": "GBP",
+        "catalogNo": "00-0372E"
+      },
+      {
+        "name": "Mizala",
+        "price": 286130.0,
+        "currency": "USD",
+        "catalogNo": "00-0372E"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0372R",
+    "description": "GENETITAN MC SYSTEM NA, REFURB EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 332235.0,
+        "currency": "GBP",
+        "catalogNo": "00-0372R"
+      },
+      {
+        "name": "Mizala",
+        "price": 238940.0,
+        "currency": "USD",
+        "catalogNo": "00-0372R"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0372RAG",
+    "description": "GENETITAN MC SYSTEM NA AG, RF EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 369035.0,
+        "currency": "GBP",
+        "catalogNo": "00-0372RAG"
+      },
+      {
+        "name": "Mizala",
+        "price": 265460.0,
+        "currency": "USD",
+        "catalogNo": "00-0372RAG"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0373",
+    "description": "GENETITAN MC SYSTEM INTL EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 291640.0,
+        "currency": "GBP",
+        "catalogNo": "00-0373"
+      },
+      {
+        "name": "Mizala",
+        "price": 216450.0,
+        "currency": "USD",
+        "catalogNo": "00-0373"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0373AG",
+    "description": "GENETITAN MC SYSTEM INTL AG EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 336950.0,
+        "currency": "GBP",
+        "catalogNo": "00-0373AG"
+      },
+      {
+        "name": "Mizala",
+        "price": 250055.0,
+        "currency": "USD",
+        "catalogNo": "00-0373AG"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0373C",
+    "description": "GENETITAN MC SYSTEM INTL, CA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 355005.0,
+        "currency": "GBP",
+        "catalogNo": "00-0373C"
+      },
+      {
+        "name": "Mizala",
+        "price": 263380.0,
+        "currency": "USD",
+        "catalogNo": "00-0373C"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0373E",
+    "description": "GENETITAN MC SYSTEM INTL, EA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 385595.0,
+        "currency": "GBP",
+        "catalogNo": "00-0373E"
+      },
+      {
+        "name": "Mizala",
+        "price": 286130.0,
+        "currency": "USD",
+        "catalogNo": "00-0373E"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0373ER",
+    "description": "GENETITAN MC SYSTEM INT, REFRB EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 301022.85,
+        "currency": "GBP",
+        "catalogNo": "00-0373ER"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0373R",
+    "description": "GENETITAN MC SYSTEM INT, REFRB EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 332235.0,
+        "currency": "GBP",
+        "catalogNo": "00-0373R"
+      },
+      {
+        "name": "Mizala",
+        "price": 209781.65,
+        "currency": "USD",
+        "catalogNo": "00-0373R"
+      },
+      {
+        "name": "Mizala",
+        "price": 238940.0,
+        "currency": "USD",
+        "catalogNo": "00-0373R"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0373RAG",
+    "description": "GENETITAN MC SYSTEM INT AG, RF EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 369035.0,
+        "currency": "GBP",
+        "catalogNo": "00-0373RAG"
+      },
+      {
+        "name": "Mizala",
+        "price": 265460.0,
+        "currency": "USD",
+        "catalogNo": "00-0373RAG"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0400-46",
+    "description": "ELISA WASH BUFFER 10X1L PACK",
+    "size": "10X1L PACK",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 91.43,
+        "currency": "GBP",
+        "catalogNo": "00-0400-46"
+      },
+      {
+        "name": "Mizala",
+        "price": 113.75,
+        "currency": "USD",
+        "catalogNo": "00-0400-46"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0400-59",
+    "description": "ELISA WASH BUFFER POWDER 1L PACK",
+    "size": "1L PACK",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 96.6,
+        "currency": "GBP",
+        "catalogNo": "00-0400-59"
+      },
+      {
+        "name": "Mizala",
+        "price": 122.85,
+        "currency": "USD",
+        "catalogNo": "00-0400-59"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0401",
+    "description": "NIMBUS TARGET PREP INSTRUMENT EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 120405.0,
+        "currency": "GBP",
+        "catalogNo": "00-0401"
+      },
+      {
+        "name": "Mizala",
+        "price": 92495.0,
+        "currency": "USD",
+        "catalogNo": "00-0401"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0402E",
+    "description": "PREOWNED GCS3000 7G W/WORKSTAT AUTOLOADER",
+    "size": "AUTOLOADER",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 119715.0,
+        "currency": "GBP",
+        "catalogNo": "00-0402E"
+      },
+      {
+        "name": "Mizala",
+        "price": 92950.0,
+        "currency": "USD",
+        "catalogNo": "00-0402E"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0402G",
+    "description": "PO GCS3000 7G W/WS & AL WW, GA",
+    "size": "WW, GA",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 119715.0,
+        "currency": "GBP",
+        "catalogNo": "00-0402G"
+      },
+      {
+        "name": "Mizala",
+        "price": 92885.0,
+        "currency": "USD",
+        "catalogNo": "00-0402G"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0403E",
+    "description": "PREOWNED GCS3000 7G SYSTEM WW, EA- EACH",
+    "size": "EA- EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 108215.0,
+        "currency": "GBP",
+        "catalogNo": "00-0403E"
+      },
+      {
+        "name": "Mizala",
+        "price": 83980.0,
+        "currency": "USD",
+        "catalogNo": "00-0403E"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0403G",
+    "description": "PREOWNED GCS3000 7G SYSTEM WW, EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 106260.0,
+        "currency": "GBP",
+        "catalogNo": "00-0403G"
+      },
+      {
+        "name": "Mizala",
+        "price": 82160.0,
+        "currency": "USD",
+        "catalogNo": "00-0403G"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0430",
+    "description": "CONCERTO RUO 120V 09337407001 EA- EACH",
+    "size": "EA- EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 240235.0,
+        "currency": "GBP",
+        "catalogNo": "00-0430"
+      },
+      {
+        "name": "Mizala",
+        "price": 176085.0,
+        "currency": "USD",
+        "catalogNo": "00-0430"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0431",
+    "description": "CONCERTO RUO 230V 09337458001 EA- EACH",
+    "size": "EA- EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 235750.0,
+        "currency": "GBP",
+        "catalogNo": "00-0431"
+      },
+      {
+        "name": "Mizala",
+        "price": 172705.0,
+        "currency": "USD",
+        "catalogNo": "00-0431"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0436",
+    "description": "CONCERTO IVD 120V 09337393001 KIT",
+    "size": "KIT",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 298310.0,
+        "currency": "GBP",
+        "catalogNo": "00-0436"
+      },
+      {
+        "name": "Mizala",
+        "price": 210730.0,
+        "currency": "USD",
+        "catalogNo": "00-0436"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0437",
+    "description": "CONCERTO IVD 230V 09337423001 KIT",
+    "size": "KIT",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 298310.0,
+        "currency": "GBP",
+        "catalogNo": "00-0437"
+      },
+      {
+        "name": "Mizala",
+        "price": 210730.0,
+        "currency": "USD",
+        "catalogNo": "00-0437"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0441",
+    "description": "GENETITAN SCANNER EA",
+    "size": "EA",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 281750.0,
+        "currency": "GBP",
+        "catalogNo": "00-0441"
+      },
+      {
+        "name": "Mizala",
+        "price": 205725.0,
+        "currency": "USD",
+        "catalogNo": "00-0441"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0442",
+    "description": "GENETITAN SCANNER, NA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "MRS",
+        "price": 293595.0,
+        "currency": "GBP",
+        "catalogNo": "00-0442"
+      }
+    ]
+  },
+  {
+    "itemNo": "00-0213G",
+    "description": "GCS3000 7G SYSTEM WW, GA EACH",
+    "size": "EACH",
+    "manufacturer": "THERMOFISHER",
+    "brand": "THERMOFISHER",
+    "suppliers": [
+      {
+        "name": "Mizala",
+        "price": 171145.0,
+        "currency": "USD",
+        "catalogNo": "00-0213G"
+      }
+    ]
+  }
+]
