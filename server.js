@@ -12,8 +12,8 @@ dotenv.config();
 connectDB();
 
 // Disable strict population checking (for debugging the populate error)
-mongoose.set("strictPopulate", false);
-console.log("Mongoose strictPopulate set to false for debugging.");
+// mongoose.set("strictPopulate", false);
+// console.log("Mongoose strictPopulate set to false for debugging.");
 
 const app = express();
 
