@@ -36,11 +36,6 @@ function checkAuth() {
   }
 }
 
-// Format number with commas for thousands
-function formatNumber(number) {
-  return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
 // Handle login form submission
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -115,12 +110,11 @@ searchForm.addEventListener('submit', async (e) => {
       throw new Error('You must be logged in to search products');
     }
     
-    // *** THIS IS THE UPDATED LINE ***
-    const response = await fetch(`${API_URL}/search`, { // Changed from /products/search to /search
+    const response = await fetch(`${API_URL}/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${userInfo.token}`,  // Make sure this line is correct
+        'Authorization': `Bearer ${userInfo.token}`,
       },
       body: JSON.stringify({ itemNumbers }),
     });
@@ -132,10 +126,16 @@ searchForm.addEventListener('submit', async (e) => {
       // Attempt to parse error message from JSON, otherwise use generic message
       let errorMsg = 'Error searching products';
       try {
-        const errorData = await response.json(); // Try to parse potential JSON error
-        errorMsg = errorData.message || errorMsg;
-      } catch (jsonError) {
-        // If response is not JSON (like the HTML error page), use the status text
+        // Check if response is JSON before trying to parse
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const errorData = await response.json(); 
+            errorMsg = errorData.message || errorMsg;
+        } else {
+            errorMsg = await response.text(); // Get response as text if not JSON
+        }
+      } catch (parseError) {
+        console.error("Error parsing error response:", parseError);
         errorMsg = response.statusText || errorMsg;
       }
       throw new Error(errorMsg);
@@ -145,12 +145,9 @@ searchForm.addEventListener('submit', async (e) => {
     displayResults(data);
     
   } catch (error) {
-    // Improved error handling to catch JSON parsing errors
-    if (error instanceof SyntaxError) {
-        showError("Received an invalid response from the server. Please check server logs.");
-    } else {
-        showError(error.message);
-    }
+    // Improved error handling
+    console.error("Search fetch error:", error);
+    showError(error.message || "An unknown error occurred during search.");
   } finally {
     // Hide loading indicator
     hideLoading();
@@ -193,32 +190,16 @@ function displayResults(products) {
     
     // Determine winner class
     let winnerClass = '';
-    if (product.winner === 'MRS') {
-      winnerClass = 'winner-mrs';
-    } else if (product.winner === 'Mizala') {
-      winnerClass = 'winner-mizala';
-    } else if (product.winner === 'Equal') {
-      winnerClass = 'winner-equal';
+    if (product.winner && product.winner !== 'N/A') {
+        // Basic class based on winner name, adjust if needed
+        winnerClass = `winner-${product.winner.toLowerCase()}`;
     }
     
-    // Format prices - Handle cases where price might not be a simple string like "491.63 GBP"
-    const formatPrice = (priceString) => {
-        if (!priceString || typeof priceString !== 'string') return 'N/A';
-        const parts = priceString.split(' ');
-        if (parts.length === 2) {
-            const price = parseFloat(parts[0]);
-            const currency = parts[1];
-            if (!isNaN(price)) {
-                // Assuming USD/GBP format, adjust as needed for other currencies
-                const symbol = currency === 'USD' ? '$' : currency === 'GBP' ? '£' : ''; 
-                return `${symbol}${formatNumber(price.toFixed(2))} ${currency}`;
-            }
-        }
-        return priceString; // Return original if format is unexpected
-    };
-
-    const mrsPrice = formatPrice(product.mrsPrice);
-    const mizalaPrice = formatPrice(product.mizalaPrice);
+    // *** MODIFICATION START ***
+    // Directly use the pre-formatted price strings from the backend
+    const mrsPrice = product.mrsPrice || 'N/A'; 
+    const mizalaPrice = product.mizalaPrice || 'N/A';
+    // *** MODIFICATION END ***
     
     // Create row content
     row.innerHTML = `
@@ -227,9 +208,9 @@ function displayResults(products) {
       <td>${product.size || 'N/A'}</td>
       <td>${product.manufacturer}</td>
       <td>${product.brand}</td>
-      <td>${mrsPrice}</td>
+      <td>${mrsPrice}</td> 
       <td>${mizalaPrice}</td>
-      <td class="${winnerClass}">${product.winner}</td>
+      <td class="${winnerClass}">${product.winner || 'N/A'}</td>
     `;
     
     fragment.appendChild(row);
