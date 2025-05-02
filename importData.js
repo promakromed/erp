@@ -1,50 +1,94 @@
 const fs = require("fs");
-const path = require("path"); // Import path module
+const path = require("path");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const colors = require("colors");
+
+// --- Delimiter used by Python script ---
+const JSON_DELIMITER = "---JSON_SEPARATOR---";
 
 // Load env vars
 dotenv.config();
 
 // Load models
 const Product = require("./models/productModel");
-const Supplier = require("./models/supplierModel"); // Load the new Supplier model
+const Supplier = require("./models/supplierModel");
 const User = require("./models/userModel");
 
-// Connect to DB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+// --- Function to read all data from stdin ---
+const readStdin = () => {
+  return new Promise((resolve, reject) => {
+    let data = 
+""
+;
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("readable", () => {
+      let chunk;
+      while ((chunk = process.stdin.read()) !== null) {
+        data += chunk;
+      }
+    });
+    process.stdin.on("end", () => {
+      resolve(data);
+    });
+    process.stdin.on("error", reject);
+  });
+};
 
-// --- Construct relative paths for data files ---
-const dataDir = path.join(__dirname, 'data');
-const suppliersFilePath = path.join(dataDir, 'suppliers.json');
-const productsFilePath = path.join(dataDir, 'products_new_format.json');
+// --- Main async function to handle stdin reading and import ---
+const main = async () => {
+  // Connect to DB
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("MongoDB Connected...".cyan);
+  } catch (err) {
+    console.error(`MongoDB Connection Error: ${err.message}`.red.inverse);
+    process.exit(1);
+  }
 
-// Read JSON files using relative paths
-let suppliersList = [];
-let productsList = [];
+  // Read and parse data from stdin
+  let suppliersList = [];
+  let productsList = [];
 
-try {
-  suppliersList = JSON.parse(fs.readFileSync(suppliersFilePath, "utf-8"));
-  console.log(`Successfully read ${suppliersFilePath}`.cyan);
-} catch (err) {
-  console.error(`ERROR: Failed to read suppliers file at ${suppliersFilePath}: ${err.message}`.red.inverse);
-  process.exit(1);
-}
+  try {
+    console.log("Reading data from standard input...".yellow);
+    const stdinData = await readStdin();
+    console.log("Finished reading standard input.".cyan);
 
-try {
-  productsList = JSON.parse(fs.readFileSync(productsFilePath, "utf-8"));
-  console.log(`Successfully read ${productsFilePath}`.cyan);
-} catch (err) {
-  console.error(`ERROR: Failed to read products file at ${productsFilePath}: ${err.message}`.red.inverse);
-  process.exit(1);
-}
+    const parts = stdinData.split(`\n${JSON_DELIMITER}\n`);
 
-// Import/Update data using Upsert
-const upsertData = async () => {
+    if (parts.length !== 2) {
+      throw new Error(
+`Expected 2 parts separated by delimiter, but found ${parts.length}. Stdin data: ${stdinData.substring(0, 500)}...
+`
+      );
+    }
+
+    suppliersList = JSON.parse(parts[0]);
+    productsList = JSON.parse(parts[1]);
+
+    console.log(`Successfully parsed ${suppliersList.length} suppliers from stdin.`.cyan);
+    console.log(`Successfully parsed ${productsList.length} products from stdin.`.cyan);
+
+  } catch (err) {
+    console.error(`ERROR: Failed to read or parse data from stdin: ${err.message}`.red.inverse);
+    process.exit(1);
+  }
+
+  // Determine which operation to perform based on command line args
+  if (process.argv.includes("-d")) {
+    await deleteData();
+  } else {
+    // Default action is now upsert
+    await upsertData(suppliersList, productsList);
+  }
+};
+
+// Import/Update data using Upsert (now accepts lists as arguments)
+const upsertData = async (suppliersList, productsList) => {
   try {
     // --- Step 1: Upsert Suppliers ---
     console.log("Processing suppliers for upsert...".yellow);
@@ -67,7 +111,7 @@ const upsertData = async () => {
       allSuppliers.forEach(s => { supplierMap[s.name] = s._id; });
       console.log("Supplier ID map created.".cyan);
     } else {
-      console.log("No suppliers found in suppliers.json to process.".yellow);
+      console.log("No suppliers found in input data to process.".yellow);
     }
 
     // --- Step 2: Create Default Admin User (if needed) ---
@@ -92,7 +136,7 @@ const upsertData = async () => {
       const updatedOffers = product.supplierOffers.map(offer => {
         const supplierId = supplierMap[offer.supplierName];
         if (!supplierId) {
-          console.warn(`WARNING: Supplier ID not found for name '${offer.supplierName}' in product ${product.itemNo}. Skipping this offer.`.red);
+          console.warn(`WARNING: Supplier ID not found for name \'${offer.supplierName}\' in product ${product.itemNo}. Skipping this offer.`.red);
           return null; // Skip this offer if supplier ID wasn't found
         }
         // Create the new offer structure with ObjectId reference
@@ -101,31 +145,26 @@ const upsertData = async () => {
           price: offer.price,
           currency: offer.currency,
           catalogNo: offer.catalogNo,
-          // Add other fields from offer if they exist and are needed
-          // supplierItemNo: offer.supplierItemNo,
-          // leadTime: offer.leadTime,
-          // minOrderQty: offer.minOrderQty
         };
       }).filter(offer => offer !== null); // Remove any null offers
 
       // Prepare the update payload for the product
       const updatePayload = {
-        ...product, // Spread existing product fields (itemNo, description, etc.)
-        supplierOffers: updatedOffers // Replace with the updated offers array
+        ...product,
+        supplierOffers: updatedOffers
       };
 
       return {
         updateOne: {
-          filter: { itemNo: product.itemNo }, // Find document by unique itemNo
-          update: { $set: updatePayload }, // Update with the new data
-          upsert: true // Insert if document doesn't exist
+          filter: { itemNo: product.itemNo },
+          update: { $set: updatePayload },
+          upsert: true
         }
       };
     });
 
     if (productOps.length === 0) {
-        console.log("No products found in products_new_format.json file to process.".yellow);
-        // Don't exit yet, suppliers might have been updated
+        console.log("No products found in input data to process.".yellow);
     } else {
         console.log(`Attempting to upsert ${productOps.length} products...`.yellow);
         const result = await Product.bulkWrite(productOps);
@@ -147,9 +186,7 @@ const upsertData = async () => {
 const deleteData = async () => {
   try {
     await Product.deleteMany();
-    await Supplier.deleteMany(); // Also delete suppliers
-    // Optionally delete users too, or keep admin user
-    // await User.deleteMany({ role: { $ne: 'admin' } });
+    await Supplier.deleteMany();
     console.log("Data Destroyed!".red.inverse);
     process.exit();
   } catch (err) {
@@ -158,11 +195,6 @@ const deleteData = async () => {
   }
 };
 
-// Determine which operation to perform based on command line args
-if (process.argv[2] === "-d") {
-  deleteData();
-} else {
-  // Default action is now upsert
-  upsertData();
-}
+// Start the main execution
+main();
 
