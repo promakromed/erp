@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path"); // Import path module
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const colors = require("colors");
@@ -17,13 +18,30 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true,
 });
 
-// Read JSON files
-const suppliersList = JSON.parse(
-  fs.readFileSync(`${__dirname}/data/suppliers.json`, "utf-8")
-);
-const productsList = JSON.parse(
-  fs.readFileSync(`${__dirname}/data/products_new_format.json`, "utf-8")
-);
+// --- Construct relative paths for data files ---
+const dataDir = path.join(__dirname, 'data');
+const suppliersFilePath = path.join(dataDir, 'suppliers.json');
+const productsFilePath = path.join(dataDir, 'products_new_format.json');
+
+// Read JSON files using relative paths
+let suppliersList = [];
+let productsList = [];
+
+try {
+  suppliersList = JSON.parse(fs.readFileSync(suppliersFilePath, "utf-8"));
+  console.log(`Successfully read ${suppliersFilePath}`.cyan);
+} catch (err) {
+  console.error(`ERROR: Failed to read suppliers file at ${suppliersFilePath}: ${err.message}`.red.inverse);
+  process.exit(1);
+}
+
+try {
+  productsList = JSON.parse(fs.readFileSync(productsFilePath, "utf-8"));
+  console.log(`Successfully read ${productsFilePath}`.cyan);
+} catch (err) {
+  console.error(`ERROR: Failed to read products file at ${productsFilePath}: ${err.message}`.red.inverse);
+  process.exit(1);
+}
 
 // Import/Update data using Upsert
 const upsertData = async () => {
