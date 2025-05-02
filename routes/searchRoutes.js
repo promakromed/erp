@@ -42,6 +42,7 @@ router.post("/", protect, async (req, res) => {
     }
 
     const itemNoArray = itemNumbers.map(item => item.trim());
+    console.log("DEBUG: Searching for item numbers:", itemNoArray); // DEBUG LOG
 
     const gbpToUsdRate = await getGbpToUsdRate();
     const conversionBuffer = 1.03; // 3% buffer
@@ -50,9 +51,25 @@ router.post("/", protect, async (req, res) => {
       console.warn("Proceeding without currency conversion due to API error.");
     }
 
-    // Find products and populate supplier details within supplierOffers
-    const products = await Product.find({ itemNo: { $in: itemNoArray } })
-                                  .populate({ path: 'supplierOffers.supplier', select: 'name' }); // Corrected populate syntax
+    // Find products
+    console.log("DEBUG: Finding products..."); // DEBUG LOG
+    const productsRaw = await Product.find({ itemNo: { $in: itemNoArray } });
+    console.log(`DEBUG: Found ${productsRaw.length} raw products. First product raw data (if exists):`, JSON.stringify(productsRaw[0], null, 2)); // DEBUG LOG
+
+    // Populate supplier details within supplierOffers
+    let products;
+    try {
+        console.log("DEBUG: Attempting to populate supplierOffers.supplier..."); // DEBUG LOG
+        products = await Product.find({ itemNo: { $in: itemNoArray } })
+                                .populate({ path: 'supplierOffers.supplier', select: 'name' });
+        console.log(`DEBUG: Population successful. First product populated data (if exists):`, JSON.stringify(products[0], null, 2)); // DEBUG LOG
+    } catch (populateError) {
+        console.error("DEBUG: Error during population:", populateError); // DEBUG LOG
+        // Optionally re-throw or handle the error, for now just log and continue with raw data if needed
+        // For this debugging, we'll throw to trigger the main catch block
+        throw populateError;
+    }
+
 
     let uniqueSuppliers = new Set(); // To collect unique supplier names for dynamic headers
 
@@ -66,7 +83,10 @@ router.post("/", protect, async (req, res) => {
       if (productObj.supplierOffers && Array.isArray(productObj.supplierOffers)) {
         productObj.supplierOffers.forEach(offer => {
           // Check if offer and populated supplier exist
-          if (!offer || !offer.supplier || !offer.supplier.name || offer.price === undefined || offer.price === null || !offer.currency) return;
+          if (!offer || !offer.supplier || !offer.supplier.name || offer.price === undefined || offer.price === null || !offer.currency) {
+            console.log("DEBUG: Skipping offer due to missing data:", offer); // DEBUG LOG
+            return;
+          }
 
           const supplierName = offer.supplier.name;
           uniqueSuppliers.add(supplierName); // Add supplier name to the set
@@ -85,7 +105,7 @@ router.post("/", protect, async (req, res) => {
               displayString = `${formatCurrencyNumber(price)} USD`;
             } else if (currency === "GBP" && gbpToUsdRate === null) {
               // If GBP rate fails, treat GBP price as non-comparable for winner determination
-              usdEquivalent = Infinity; 
+              usdEquivalent = Infinity;
               displayString = `${formatCurrencyNumber(price)} GBP`;
             } else {
               // Other currencies are not directly comparable
@@ -128,7 +148,7 @@ router.post("/", protect, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Search error:", error);
+    console.error("Search error:", error); // This will now catch the populateError too
     res.status(500).json({ message: "Server Error" });
   }
 });
