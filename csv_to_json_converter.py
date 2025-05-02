@@ -13,7 +13,7 @@ OUTPUT_SUPPLIERS_FILE = os.path.join(DATA_DIR, 'suppliers.json')
 OUTPUT_PRODUCTS_FILE = os.path.join(DATA_DIR, 'products_new_format.json')
 SUPPLIER_FILES = {
     'MRS': os.path.join(DATA_DIR, 'MRS_Thermo.csv'),
-    'Mizala': os.path.join(DATA_DIR, 'Mizala_Thermo.csv') # Corrected filename
+    'Mizala': os.path.join(DATA_DIR, 'MIZALA_Thermo.csv') # Corrected filename to uppercase M
 }
 
 # --- Helper function to clean CSV headers ---
