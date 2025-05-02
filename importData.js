@@ -129,20 +129,23 @@ const upsertData = async (suppliersList, productsList) => {
 
     // Prepare bulk operations for products
     const productOps = productsList.map(product => {
-      // Map supplier offers to include supplier ObjectId
+      // Map supplier offers to include supplier ObjectId, strictly adhering to schema
       const updatedOffers = product.supplierOffers.map(offer => {
         const supplierId = supplierMap[offer.supplierName];
         if (!supplierId) {
           console.warn(`WARNING: Supplier ID not found for name \'${offer.supplierName}\' in product ${product.itemNo}. Skipping this offer.`.red);
           return null; // Skip this offer if supplier ID wasn't found
         }
-        // Create the new offer structure with ObjectId reference
-        return {
-          supplier: supplierId,
-          price: offer.price,
-          currency: offer.currency,
-          catalogNo: offer.catalogNo,
+        // Create the new offer structure strictly matching the schema fields
+        // Only include fields provided by the Python script that are in the schema
+        const newOffer = {
+          supplier: supplierId, // required: true
+          price: offer.price, // required: true
+          currency: offer.currency || 'USD', // default: 'USD'
+          catalogNo: offer.catalogNo || undefined, // required: false
+          // supplierItemNo, leadTime, minOrderQty, discountTiers, lastUpdated will use schema defaults or be undefined
         };
+        return newOffer;
       }).filter(offer => offer !== null); // Remove any null offers
 
       // Prepare the update payload for the product
@@ -151,8 +154,10 @@ const upsertData = async (suppliersList, productsList) => {
         itemNo: product.itemNo,
         description: product.description,
         manufacturer: product.manufacturer,
-        // Add any other fields from the JSON that should be preserved/updated
-        supplierOffers: updatedOffers // The newly constructed offers array
+        brand: product.brand,
+        size: product.size,
+        // Add any other top-level fields from the JSON that should be preserved/updated
+        supplierOffers: updatedOffers // The newly constructed, schema-compliant offers array
       };
 
       return {
