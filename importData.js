@@ -131,46 +131,71 @@ const upsertData = async (suppliersList, productsList) => {
     console.log("Processing products for upsert...".yellow);
 
     // Prepare bulk operations for products
-    const productOps = productsList.map(product => {
+    const productOps = productsList.map((product, index) => {
+      // *** IMPORT DEBUG START ***
+      if (index < 3) { // Log first 3 products only
+        console.log(`IMPORT_DEBUG: Processing product index ${index}, itemNo: ${product.itemNo}`);
+        console.log(`IMPORT_DEBUG: Raw product input: ${JSON.stringify(product, null, 2)}`);
+      }
+      // *** IMPORT DEBUG END ***
+
       // Map supplier offers to include supplier ObjectId, strictly adhering to schema
-      const updatedOffers = product.supplierOffers.map(offer => {
-        const supplierId = supplierMap[offer.supplierName];
-        if (!supplierId) {
-          console.warn(`WARNING: Supplier ID not found for name \'${offer.supplierName}\' in product ${product.itemNo}. Skipping this offer.`.red);
-          return null; // Skip this offer if supplier ID wasn't found
-        }
-        // Create the new offer structure strictly matching the schema fields
-        // Only include fields provided by the Python script that are in the schema
-        const newOffer = {
-          supplier: supplierId, // required: true
-          price: offer.price, // required: true
-          currency: offer.currency || 'USD', // default: 'USD'
-          catalogNo: offer.catalogNo || undefined, // required: false
-          // supplierItemNo, leadTime, minOrderQty, discountTiers, lastUpdated will use schema defaults or be undefined
-        };
-        return newOffer;
-      }).filter(offer => offer !== null); // Remove any null offers
+      let updatedOffers = []; // Initialize as empty array
+      if (product.supplierOffers && Array.isArray(product.supplierOffers)) {
+          updatedOffers = product.supplierOffers.map(offer => {
+            const supplierId = supplierMap[offer.supplierName];
+            if (!supplierId) {
+              console.warn(`WARNING: Supplier ID not found for name \'${offer.supplierName}\' in product ${product.itemNo}. Skipping this offer.`.red);
+              return null; // Skip this offer if supplier ID wasn't found
+            }
+            // Create the new offer structure strictly matching the schema fields
+            const newOffer = {
+              supplier: supplierId, // required: true
+              price: offer.price, // required: true
+              currency: offer.currency || 'USD', // default: 'USD'
+              catalogNo: offer.catalogNo || undefined, // required: false
+            };
+            return newOffer;
+          }).filter(offer => offer !== null); // Remove any null offers
+      } else {
+          // *** IMPORT DEBUG START ***
+          if (index < 3) { // Log first 3 products only
+            console.log(`IMPORT_DEBUG: Product index ${index} has no valid supplierOffers array in input.`);
+          }
+          // *** IMPORT DEBUG END ***
+      }
+
+      // *** IMPORT DEBUG START ***
+      if (index < 3) { // Log first 3 products only
+        console.log(`IMPORT_DEBUG: Product index ${index}, Constructed updatedOffers: ${JSON.stringify(updatedOffers, null, 2)}`);
+      }
+      // *** IMPORT DEBUG END ***
 
       // Prepare the update payload for the product
-      // Explicitly list fields to $set from the parsed JSON data
       const setPayload = {
         itemNo: product.itemNo,
         description: product.description,
         manufacturer: product.manufacturer,
         brand: product.brand,
         size: product.size,
-        // Add any other top-level fields from the JSON that should be preserved/updated
-        supplierOffers: updatedOffers // The newly constructed, schema-compliant offers array
+        // *** Ensure supplierOffers is included in the $set payload ***
+        supplierOffers: updatedOffers 
       };
+
+      // *** IMPORT DEBUG START ***
+      if (index < 3) { // Log first 3 products only
+        console.log(`IMPORT_DEBUG: Product index ${index}, Final $set payload: ${JSON.stringify(setPayload, null, 2)}`);
+      }
+      // *** IMPORT DEBUG END ***
 
       return {
         updateOne: {
           filter: { itemNo: product.itemNo },
           update: {
-            $set: setPayload, // Set the fields we want based on input JSON
+            $set: setPayload, 
             $unset: { suppliers: "" } // Explicitly remove the old 'suppliers' field
           },
-          upsert: true // Create if not exists, otherwise update using $set and $unset
+          upsert: true 
         }
       };
     });
@@ -179,6 +204,9 @@ const upsertData = async (suppliersList, productsList) => {
         console.log("No products found in input data to process.".yellow);
     } else {
         console.log(`Attempting to upsert ${productOps.length} products...`.yellow);
+        // *** IMPORT DEBUG START ***
+        console.log(`IMPORT_DEBUG: First bulkWrite operation object: ${JSON.stringify(productOps[0], null, 2)}`);
+        // *** IMPORT DEBUG END ***
         const result = await Product.bulkWrite(productOps);
         console.log("Product upsert operation completed.".green);
         console.log(`  Inserted: ${result.upsertedCount}`.cyan);
