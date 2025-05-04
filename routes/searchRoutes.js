@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
+const mongoose = require("mongoose"); // Needed for ObjectId check
 const { protect } = require("../middleware/authMiddleware");
 const Product = require("../models/productModel");
-const Supplier = require("../models/supplierModel"); // Ensure Supplier model is imported
+const Supplier = require("../models/supplierModel");
 
 // Helper function to format numbers with commas and 2 decimal places
 function formatCurrencyNumber(num) {
@@ -42,7 +43,7 @@ router.post("/", protect, async (req, res) => {
     }
 
     const itemNoArray = itemNumbers.map(item => item.trim());
-    console.log("DEBUG: Searching for item numbers:", itemNoArray); // DEBUG LOG
+    console.log("DEBUG: Searching for item numbers:", itemNoArray);
 
     const gbpToUsdRate = await getGbpToUsdRate();
     const conversionBuffer = 1.03; // 3% buffer
@@ -51,50 +52,61 @@ router.post("/", protect, async (req, res) => {
       console.warn("Proceeding without currency conversion due to API error.");
     }
 
-    // Find products
-    console.log("DEBUG: Finding products..."); // DEBUG LOG
-    const productsRaw = await Product.find({ itemNo: { $in: itemNoArray } });
-    console.log(`DEBUG: Found ${productsRaw.length} raw products. First product raw data (if exists):`, JSON.stringify(productsRaw[0], null, 2)); // DEBUG LOG
+    // --- Manual Population Strategy --- 
 
-    // Populate supplier details within supplierOffers
-    let products;
-    try {
-        console.log("DEBUG: Attempting to populate supplierOffers.supplier..."); // DEBUG LOG
-        // *** Explicitly specify the model for population ***
-        products = await Product.find({ itemNo: { $in: itemNoArray } })
-                                .populate({ 
-                                    path: 'supplierOffers.supplier', 
-                                    select: 'name',
-                                    model: 'Supplier' // Explicitly state the model
-                                });
-        console.log(`DEBUG: Population successful. First product populated data (if exists):`, JSON.stringify(products[0], null, 2)); // DEBUG LOG
-    } catch (populateError) {
-        console.error("DEBUG: Error during population:", populateError); // DEBUG LOG
-        // Optionally re-throw or handle the error, for now just log and continue with raw data if needed
-        // For this debugging, we'll throw to trigger the main catch block
-        throw populateError;
+    // 1. Find products without population
+    console.log("DEBUG: Finding products (manual population)...");
+    const products = await Product.find({ itemNo: { $in: itemNoArray } }).lean(); // Use .lean() for plain JS objects
+    console.log(`DEBUG: Found ${products.length} products.`);
+
+    if (!products || products.length === 0) {
+        return res.json({ products: [], suppliers: [] }); // Return empty if no products found
     }
 
+    // 2. Collect unique supplier ObjectIds
+    let supplierIds = new Set();
+    products.forEach(product => {
+        if (product.supplierOffers && Array.isArray(product.supplierOffers)) {
+            product.supplierOffers.forEach(offer => {
+                // Check if offer.supplier is a valid ObjectId before adding
+                if (offer.supplier && mongoose.Types.ObjectId.isValid(offer.supplier)) {
+                    supplierIds.add(offer.supplier.toString());
+                }
+            });
+        }
+    });
+    const uniqueSupplierIds = Array.from(supplierIds).map(id => new mongoose.Types.ObjectId(id));
+    console.log("DEBUG: Unique Supplier IDs found:", uniqueSupplierIds);
 
-    let uniqueSuppliers = new Set(); // To collect unique supplier names for dynamic headers
+    // 3. Fetch supplier details (names) for these IDs
+    let supplierMap = {}; // Map ObjectId -> Name
+    let uniqueSuppliers = new Set(); // Set for final supplier list
+    if (uniqueSupplierIds.length > 0) {
+        console.log("DEBUG: Fetching supplier names...");
+        const suppliers = await Supplier.find({ _id: { $in: uniqueSupplierIds } }).select('name');
+        suppliers.forEach(supplier => {
+            supplierMap[supplier._id.toString()] = supplier.name;
+            uniqueSuppliers.add(supplier.name);
+        });
+        console.log("DEBUG: Supplier Map created:", supplierMap);
+    }
 
-    // Process products
+    // 4. Process products and manually add supplier names / format offers
     const processedProducts = products.map(product => {
-      const productObj = product.toObject();
       let offers = {}; // Object to hold offers keyed by supplier name
       let winner = null;
       let lowestPriceUsd = Infinity;
 
-      if (productObj.supplierOffers && Array.isArray(productObj.supplierOffers)) {
-        productObj.supplierOffers.forEach(offer => {
-          // Check if offer and populated supplier exist
-          if (!offer || !offer.supplier || !offer.supplier.name || offer.price === undefined || offer.price === null || !offer.currency) {
-            console.log("DEBUG: Skipping offer due to missing data:", offer); // DEBUG LOG
+      if (product.supplierOffers && Array.isArray(product.supplierOffers)) {
+        product.supplierOffers.forEach(offer => {
+          // Get supplier name from the map
+          const supplierName = supplierMap[offer.supplier?.toString()]; // Use optional chaining
+
+          // Check if offer, supplier name, price, and currency exist
+          if (!offer || !supplierName || offer.price === undefined || offer.price === null || !offer.currency) {
+            console.log("DEBUG: Skipping offer due to missing data or supplier name:", offer);
             return;
           }
-
-          const supplierName = offer.supplier.name;
-          uniqueSuppliers.add(supplierName); // Add supplier name to the set
 
           const price = parseFloat(offer.price);
           const currency = offer.currency.toUpperCase();
@@ -109,19 +121,15 @@ router.post("/", protect, async (req, res) => {
               usdEquivalent = price;
               displayString = `${formatCurrencyNumber(price)} USD`;
             } else if (currency === "GBP" && gbpToUsdRate === null) {
-              // If GBP rate fails, treat GBP price as non-comparable for winner determination
-              usdEquivalent = Infinity; 
+              usdEquivalent = Infinity;
               displayString = `${formatCurrencyNumber(price)} GBP`;
             } else {
-              // Other currencies are not directly comparable
               usdEquivalent = Infinity;
               displayString = `${formatCurrencyNumber(price)} ${currency}`;
             }
 
-            // Store the formatted display string for this supplier
             offers[supplierName] = displayString;
 
-            // Determine winner based on USD equivalent
             if (usdEquivalent < lowestPriceUsd) {
               lowestPriceUsd = usdEquivalent;
               winner = supplierName;
@@ -136,24 +144,23 @@ router.post("/", protect, async (req, res) => {
         winner = "N/A";
       }
 
-      // Remove the original supplierOffers array from the response if desired
-      // delete productObj.supplierOffers;
-
+      // Return product data with formatted offers
+      // Note: product is already a plain JS object due to .lean()
       return {
-        ...productObj,
-        offers: offers, // Return offers keyed by supplier name
+        ...product,
+        offers: offers,
         winner: winner
       };
     });
 
-    // Send back the processed products and the list of unique suppliers found
+    // 5. Send response
     res.json({
         products: processedProducts,
         suppliers: Array.from(uniqueSuppliers) // Convert Set to Array for JSON
     });
 
   } catch (error) {
-    console.error("Search error:", error); // This will now catch the populateError too
+    console.error("Search error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
