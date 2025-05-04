@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import glob # Import glob for file matching
+import requests # Import requests for API calls
 from collections import defaultdict
 
 # --- Unique delimiter for separating JSON outputs ---
@@ -13,13 +14,38 @@ JSON_DELIMITER = "---JSON_SEPARATOR---"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(SCRIPT_DIR, 'data') # Assumes 'data' directory is in the same dir as the script
 
-# --- Approximate Exchange Rates (Update as needed) ---
-EXCHANGE_RATES = {
-    'USD': 1.0,
-    'EUR': 1.1,  # 1 EUR = 1.1 USD
-    'GBP': 1.25, # 1 GBP = 1.25 USD
-    # Add other currencies if needed
-}
+# --- Function to fetch live exchange rates ---
+def fetch_live_exchange_rates(base_currency="USD"):
+    print(f"DEBUG: Fetching live exchange rates with base {base_currency}...", file=sys.stderr)
+    sys.stderr.flush()
+    rates = {base_currency: 1.0} # Initialize with base rate
+    try:
+        # Using a free API endpoint (replace if you have a preferred one)
+        api_url = f"https://open.er-api.com/v6/latest/{base_currency}"
+        response = requests.get(api_url, timeout=10) # Added timeout
+        response.raise_for_status() # Raise an exception for bad status codes
+        data = response.json()
+        if data.get("result") == "success":
+            rates.update(data.get("rates", {}))
+            print(f"DEBUG: Successfully fetched rates. Example EUR: {rates.get('EUR')}, GBP: {rates.get('GBP')}", file=sys.stderr)
+        else:
+            print(f"WARNING: Exchange rate API did not return success. Result: {data.get('result')}", file=sys.stderr)
+    except requests.exceptions.RequestException as e:
+        print(f"WARNING: Failed to fetch live exchange rates: {e}. Using default rates.", file=sys.stderr)
+    except json.JSONDecodeError as e:
+        print(f"WARNING: Failed to parse exchange rate API response: {e}. Using default rates.", file=sys.stderr)
+    except Exception as e:
+        print(f"WARNING: An unexpected error occurred fetching rates: {e}. Using default rates.", file=sys.stderr)
+    sys.stderr.flush()
+    # Fallback/default rates if API fails or doesn't provide needed currencies
+    if 'EUR' not in rates:
+        rates['EUR'] = 1.1 # Default fallback
+        print("WARNING: Using default EUR rate.", file=sys.stderr)
+    if 'GBP' not in rates:
+        rates['GBP'] = 1.25 # Default fallback
+        print("WARNING: Using default GBP rate.", file=sys.stderr)
+    sys.stderr.flush()
+    return rates
 
 # --- Helper function to clean CSV headers ---
 def clean_dict_keys(row):
@@ -35,17 +61,28 @@ def parse_price(price_str):
     except (ValueError, TypeError):
         return 0.0 # Return 0.0 if conversion fails
 
-# --- Helper function to convert price to USD ---
-def convert_to_usd(price, currency):
+# --- Helper function to convert price to USD using fetched rates ---
+def convert_to_usd(price, currency, rates):
     currency_upper = currency.upper()
-    rate = EXCHANGE_RATES.get(currency_upper, 1.0) # Default to 1.0 if currency not found
-    if rate != 1.0:
-        return round(price * rate, 2) # Convert and round to 2 decimal places
-    return price # Return original price if already USD or rate not found
+    if currency_upper == "USD":
+        return price # Already USD
+    # We need the rate FROM the currency TO USD. API gives rates FROM USD.
+    # So, rate(USD to CUR) = rates[CUR]. Rate(CUR to USD) = 1 / rates[CUR]
+    rate_from_usd = rates.get(currency_upper)
+    if rate_from_usd and rate_from_usd != 0:
+        usd_price = price / rate_from_usd
+        return round(usd_price, 2) # Convert and round to 2 decimal places
+    else:
+        print(f"WARNING: No rate found for {currency_upper} or rate is zero. Cannot convert to USD.", file=sys.stderr)
+        sys.stderr.flush()
+        return price # Return original price if conversion not possible
 
 # --- Main processing logic ---
 products_data = defaultdict(lambda: {'itemNo': None, 'description': None, 'manufacturer': None, 'brand': None, 'size': None, 'supplierOffers': []})
 all_suppliers = set()
+
+# Fetch live rates at the start
+LIVE_EXCHANGE_RATES = fetch_live_exchange_rates("USD")
 
 # Print status messages to stderr to avoid interfering with stdout JSON
 print("Starting CSV processing...", file=sys.stderr)
@@ -109,17 +146,15 @@ for file_path in csv_files:
                     # Add supplier offer with currency conversion
                     original_price_str = row.get('PRICE')
                     original_price = parse_price(original_price_str)
-                    original_currency = row.get('CURRENCY', 'USD').strip()
-                    usd_price = convert_to_usd(original_price, original_currency)
+                    original_currency = row.get('CURRENCY', 'USD').strip().upper()
+                    usd_price = convert_to_usd(original_price, original_currency, LIVE_EXCHANGE_RATES)
 
                     offer = {
                         'supplierName': supplier_name,
-                        'price': usd_price, # Store the converted USD price
-                        'currency': 'USD', # Always store USD in the database offer
+                        'originalPrice': original_price, # Store original price
+                        'originalCurrency': original_currency, # Store original currency
+                        'usdPrice': usd_price, # Store the calculated USD price
                         'catalogNo': row.get('CATALOG #', item_no).strip(), # Use PART # if CATALOG # missing
-                        # Optionally store original price/currency if needed for display
-                        # 'originalPrice': original_price,
-                        # 'originalCurrency': original_currency
                     }
                     products_data[item_no]['supplierOffers'].append(offer)
 
@@ -149,13 +184,14 @@ for file_path in csv_files:
                     # Add supplier offer with currency conversion
                     original_price_str = row.get('PRICE')
                     original_price = parse_price(original_price_str)
-                    original_currency = row.get('CURRENCY', 'USD').strip()
-                    usd_price = convert_to_usd(original_price, original_currency)
+                    original_currency = row.get('CURRENCY', 'USD').strip().upper()
+                    usd_price = convert_to_usd(original_price, original_currency, LIVE_EXCHANGE_RATES)
 
                     offer = {
                         'supplierName': supplier_name,
-                        'price': usd_price, # Store the converted USD price
-                        'currency': 'USD', # Always store USD in the database offer
+                        'originalPrice': original_price, # Store original price
+                        'originalCurrency': original_currency, # Store original currency
+                        'usdPrice': usd_price, # Store the calculated USD price
                         'catalogNo': row.get('CATALOG #', item_no).strip(),
                     }
                     products_data[item_no]['supplierOffers'].append(offer)
