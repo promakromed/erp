@@ -60,8 +60,13 @@ router.post("/", protect, async (req, res) => {
     let products;
     try {
         console.log("DEBUG: Attempting to populate supplierOffers.supplier..."); // DEBUG LOG
+        // *** Explicitly specify the model for population ***
         products = await Product.find({ itemNo: { $in: itemNoArray } })
-                                .populate({ path: 'supplierOffers.supplier', select: 'name' });
+                                .populate({ 
+                                    path: 'supplierOffers.supplier', 
+                                    select: 'name',
+                                    model: 'Supplier' // Explicitly state the model
+                                });
         console.log(`DEBUG: Population successful. First product populated data (if exists):`, JSON.stringify(products[0], null, 2)); // DEBUG LOG
     } catch (populateError) {
         console.error("DEBUG: Error during population:", populateError); // DEBUG LOG
@@ -105,7 +110,7 @@ router.post("/", protect, async (req, res) => {
               displayString = `${formatCurrencyNumber(price)} USD`;
             } else if (currency === "GBP" && gbpToUsdRate === null) {
               // If GBP rate fails, treat GBP price as non-comparable for winner determination
-              usdEquivalent = Infinity;
+              usdEquivalent = Infinity; 
               displayString = `${formatCurrencyNumber(price)} GBP`;
             } else {
               // Other currencies are not directly comparable
