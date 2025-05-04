@@ -77,17 +77,21 @@ const productSchema = mongoose.Schema(
           ref: 'Supplier', // Links to the Supplier model
           required: true
         },
-        supplierItemNo: { // Specific to this product-supplier link
-          type: String,
-          required: false,
-        },
-        price: {
+        originalPrice: { // Price in original currency from CSV
           type: Number,
           required: true,
         },
-        currency: {
+        originalCurrency: { // Currency from CSV (e.g., GBP, EUR)
           type: String,
-          default: 'USD',
+          required: true,
+        },
+        usdPrice: { // Calculated USD equivalent price
+          type: Number,
+          required: true,
+        },
+        supplierItemNo: { // Specific to this product-supplier link
+          type: String,
+          required: false,
         },
         catalogNo: { // Specific to this product-supplier link
           type: String,
@@ -105,7 +109,7 @@ const productSchema = mongoose.Schema(
         discountTiers: [
           {
             quantity: Number,
-            price: Number,
+            price: Number, // Assuming discount price is also in original currency?
           }
         ],
         lastUpdated: {
