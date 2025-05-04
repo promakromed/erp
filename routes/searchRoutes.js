@@ -16,12 +16,33 @@ function formatCurrencyNumber(num) {
 
 // Removed getGbpToUsdRate function as conversion now happens during import
 
-// @desc    Search products by item number (Handles POST request from frontend)
+// @desc    Get distinct manufacturers
+// @route   GET /api/search/manufacturers
+// @access  Private
+router.get("/manufacturers", protect, async (req, res) => {
+  try {
+    console.log("--- GET MANUFACTURERS START ---");
+    const manufacturers = await Product.distinct("manufacturer");
+    // Filter out any null or empty string values and sort alphabetically
+    const filteredManufacturers = manufacturers.filter(m => m).sort(); 
+    console.log(`DEBUG: Found distinct manufacturers: ${filteredManufacturers.join(', ')}`);
+    console.log("--- GET MANUFACTURERS END ---");
+    res.json(filteredManufacturers);
+  } catch (error) {
+    console.error("Error fetching distinct manufacturers:", error);
+    console.log("--- GET MANUFACTURERS END (ERROR) ---");
+    res.status(500).json({ message: "Server Error fetching manufacturers" });
+  }
+});
+
+
+// @desc    Search products by item number and optionally manufacturer
 // @route   POST /api/search
 // @access  Private
 router.post("/", protect, async (req, res) => {
   try {
-    const { itemNumbers } = req.body;
+    // Get itemNumbers and optional manufacturer from request body
+    const { itemNumbers, manufacturer } = req.body;
 
     if (!itemNumbers || !Array.isArray(itemNumbers) || itemNumbers.length === 0) {
       return res.status(400).json({ message: "Item numbers array is required in the request body" });
@@ -30,19 +51,30 @@ router.post("/", protect, async (req, res) => {
     const itemNoArray = itemNumbers.map(item => item.trim());
     console.log("--- SEARCH START ---");
     console.log("DEBUG: Searching for item numbers:", itemNoArray);
+    if (manufacturer) {
+        console.log("DEBUG: Filtering by manufacturer:", manufacturer);
+    }
 
-    // --- Manual Population Strategy --- 
+    // --- Build the query filter --- 
+    const filter = { 
+        itemNo: { $in: itemNoArray } 
+    };
+    // Add manufacturer to filter if provided and not empty/null
+    if (manufacturer && manufacturer.trim() !== "") {
+        filter.manufacturer = manufacturer;
+    }
+    console.log("DEBUG: Using query filter:", filter);
 
-    // 1. Find products without population
+    // 1. Find products using the filter
     console.log("DEBUG: Finding products (manual population)...");
     // Select the necessary fields including the new price fields
-    const products = await Product.find({ itemNo: { $in: itemNoArray } })
+    const products = await Product.find(filter)
         .select("+supplierOffers.originalPrice +supplierOffers.originalCurrency +supplierOffers.usdPrice") // Ensure these are selected if not default
         .lean(); // Use .lean() for plain JS objects
-    console.log(`DEBUG: Found ${products.length} products.`);
+    console.log(`DEBUG: Found ${products.length} products matching filter.`);
 
     if (!products || products.length === 0) {
-        console.log("DEBUG: No products found, returning empty response.");
+        console.log("DEBUG: No products found matching filter, returning empty response.");
         return res.json({ products: [], suppliers: [] });
     }
 
@@ -51,7 +83,7 @@ router.post("/", protect, async (req, res) => {
         console.log("DEBUG: Raw product data (first product):", JSON.stringify(products[0], null, 2));
     }
 
-    // 2. Collect unique supplier ObjectIds
+    // 2. Collect unique supplier ObjectIds from the found products
     let supplierIds = new Set();
     products.forEach((product, pIndex) => {
         console.log(`DEBUG: Processing product ${pIndex} (${product.itemNo})`);
