@@ -34,7 +34,6 @@ const productSchema = mongoose.Schema(
     weightUnit: {
       type: String,
       required: false,
-      default: 'kg',
     },
     
     // Product categorization
@@ -70,14 +69,15 @@ const productSchema = mongoose.Schema(
       required: false,
     },
     
-    // Multiple suppliers with pricing information
-    suppliers: [
+    // Supplier offers with pricing information (references Supplier model)
+    supplierOffers: [
       {
-        name: {
-          type: String,
-          required: true,
+        supplier: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Supplier', // Links to the Supplier model
+          required: true
         },
-        supplierItemNo: {
+        supplierItemNo: { // Specific to this product-supplier link
           type: String,
           required: false,
         },
@@ -89,7 +89,7 @@ const productSchema = mongoose.Schema(
           type: String,
           default: 'USD',
         },
-        catalogNo: {
+        catalogNo: { // Specific to this product-supplier link
           type: String,
           required: false,
         },
@@ -189,3 +189,4 @@ productSchema.index({
 const Product = mongoose.model('Product', productSchema);
 
 module.exports = Product;
+
