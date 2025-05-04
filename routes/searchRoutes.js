@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const axios = require("axios"); // Keep for potential future use, though rate fetching moved to Python
 const mongoose = require("mongoose"); // Needed for ObjectId check
+const { Parser } = require("json2csv"); // Import json2csv Parser
 const { protect } = require("../middleware/authMiddleware");
 const Product = require("../models/productModel");
 const Supplier = require("../models/supplierModel");
@@ -14,8 +15,6 @@ function formatCurrencyNumber(num) {
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Removed getGbpToUsdRate function as conversion now happens during import
-
 // @desc    Get distinct manufacturers
 // @route   GET /api/search/manufacturers
 // @access  Private
@@ -23,7 +22,6 @@ router.get("/manufacturers", protect, async (req, res) => {
   try {
     console.log("--- GET MANUFACTURERS START ---");
     const manufacturers = await Product.distinct("manufacturer");
-    // Filter out any null or empty string values and sort alphabetically
     const filteredManufacturers = manufacturers.filter(m => m).sort(); 
     console.log(`DEBUG: Found distinct manufacturers: ${filteredManufacturers.join(', ')}`);
     console.log("--- GET MANUFACTURERS END ---");
@@ -41,11 +39,10 @@ router.get("/manufacturers", protect, async (req, res) => {
 // @access  Private
 router.post("/", protect, async (req, res) => {
   try {
-    // Get itemNumbers and optional manufacturer from request body
     const { itemNumbers, manufacturer } = req.body;
 
     if (!itemNumbers || !Array.isArray(itemNumbers) || itemNumbers.length === 0) {
-      return res.status(400).json({ message: "Item numbers array is required in the request body" });
+      return res.status(400).json({ message: "Item numbers array is required" });
     }
 
     const itemNoArray = itemNumbers.map(item => item.trim());
@@ -55,95 +52,56 @@ router.post("/", protect, async (req, res) => {
         console.log("DEBUG: Filtering by manufacturer:", manufacturer);
     }
 
-    // --- Build the query filter --- 
-    const filter = { 
-        itemNo: { $in: itemNoArray } 
-    };
-    // Add manufacturer to filter if provided and not empty/null
-    if (manufacturer && manufacturer.trim() !== "") {
-        filter.manufacturer = manufacturer;
+    let query = { itemNo: { $in: itemNoArray } };
+    if (manufacturer && manufacturer !== "All" && manufacturer !== "") {
+        query.manufacturer = manufacturer;
     }
-    console.log("DEBUG: Using query filter:", filter);
+    console.log("DEBUG: Using query:", query);
 
-    // 1. Find products using the filter
-    console.log("DEBUG: Finding products (manual population)...");
-    // Select the necessary fields including the new price fields
-    const products = await Product.find(filter)
-        .select("+supplierOffers.originalPrice +supplierOffers.originalCurrency +supplierOffers.usdPrice") // Ensure these are selected if not default
-        .lean(); // Use .lean() for plain JS objects
-    console.log(`DEBUG: Found ${products.length} products matching filter.`);
+    const products = await Product.find(query)
+        .select("+supplierOffers.originalPrice +supplierOffers.originalCurrency +supplierOffers.usdPrice")
+        .lean();
+    console.log(`DEBUG: Found ${products.length} products matching query.`);
 
     if (!products || products.length === 0) {
-        console.log("DEBUG: No products found matching filter, returning empty response.");
+        console.log("DEBUG: No products found, returning empty response.");
         return res.json({ products: [], suppliers: [] });
     }
 
-    // *** DETAILED LOGGING START ***
-    if (products.length > 0) {
-        console.log("DEBUG: Raw product data (first product):", JSON.stringify(products[0], null, 2));
-    }
-
-    // 2. Collect unique supplier ObjectIds from the found products
     let supplierIds = new Set();
-    products.forEach((product, pIndex) => {
-        console.log(`DEBUG: Processing product ${pIndex} (${product.itemNo})`);
+    products.forEach(product => {
         if (product.supplierOffers && Array.isArray(product.supplierOffers)) {
-            console.log(`DEBUG: Product ${pIndex} has ${product.supplierOffers.length} supplierOffers.`);
-            product.supplierOffers.forEach((offer, oIndex) => {
-                console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}:`, JSON.stringify(offer));
+            product.supplierOffers.forEach(offer => {
                 if (offer.supplier && mongoose.Types.ObjectId.isValid(offer.supplier)) {
-                    const idStr = offer.supplier.toString();
-                    console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Valid supplier ID found: ${idStr}`);
-                    supplierIds.add(idStr);
-                } else {
-                    console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Invalid or missing supplier ID.`);
+                    supplierIds.add(offer.supplier.toString());
                 }
             });
-        } else {
-            console.log(`DEBUG: Product ${pIndex} has no valid supplierOffers array.`);
         }
     });
     const uniqueSupplierIds = Array.from(supplierIds).map(id => new mongoose.Types.ObjectId(id));
     console.log("DEBUG: Collected Unique Supplier ObjectIDs:", uniqueSupplierIds);
 
-    // 3. Fetch supplier details (names) for these IDs
-    let supplierMap = {}; // Map ObjectId -> Name
-    let uniqueSuppliers = new Set(); // Set for final supplier list
+    let supplierMap = {};
+    let uniqueSuppliers = new Set();
     if (uniqueSupplierIds.length > 0) {
-        console.log("DEBUG: Fetching supplier names for IDs:", uniqueSupplierIds);
-        const suppliers = await Supplier.find({ _id: { $in: uniqueSupplierIds } }).select('name _id'); // Select _id too for mapping
-        console.log(`DEBUG: Found ${suppliers.length} suppliers in DB.`);
+        const suppliers = await Supplier.find({ _id: { $in: uniqueSupplierIds } }).select('name _id');
         suppliers.forEach(supplier => {
-            const idStr = supplier._id.toString();
-            console.log(`DEBUG: Mapping supplier ID ${idStr} to name '${supplier.name}'`);
-            supplierMap[idStr] = supplier.name;
+            supplierMap[supplier._id.toString()] = supplier.name;
             uniqueSuppliers.add(supplier.name);
         });
         console.log("DEBUG: Final Supplier Map:", supplierMap);
-        console.log("DEBUG: Final Unique Supplier Names:", Array.from(uniqueSuppliers));
-    } else {
-        console.log("DEBUG: No unique supplier IDs found to fetch names for.");
     }
 
-    // 4. Process products and manually add supplier names / format offers
-    console.log("DEBUG: Processing products to build final response...");
-    const processedProducts = products.map((product, pIndex) => {
-      console.log(`DEBUG: Formatting product ${pIndex} (${product.itemNo})`);
-      let offers = {}; // Object to hold offers keyed by supplier name
+    const processedProducts = products.map(product => {
+      let offers = {};
       let winner = null;
       let lowestPriceUsd = Infinity;
 
       if (product.supplierOffers && Array.isArray(product.supplierOffers)) {
-        product.supplierOffers.forEach((offer, oIndex) => {
+        product.supplierOffers.forEach(offer => {
           const supplierIdStr = offer.supplier?.toString();
           const supplierName = supplierMap[supplierIdStr]; 
-          console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Supplier ID String: ${supplierIdStr}, Mapped Name: ${supplierName}`);
-
-          // Check for essential fields from the updated schema
-          if (!offer || !supplierName || offer.originalPrice === undefined || offer.originalCurrency === undefined || offer.usdPrice === undefined) {
-            console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Skipping offer due to missing data (Offer: ${!!offer}, Name: ${!!supplierName}, OrigPrice: ${offer?.originalPrice}, OrigCurr: ${offer?.originalCurrency}, UsdPrice: ${offer?.usdPrice})`);
-            return;
-          }
+          if (!offer || !supplierName || offer.originalPrice === undefined || offer.originalCurrency === undefined || offer.usdPrice === undefined) return;
 
           const originalPrice = parseFloat(offer.originalPrice);
           const originalCurrency = offer.originalCurrency.toUpperCase();
@@ -151,50 +109,39 @@ router.post("/", protect, async (req, res) => {
           let displayString = "N/A";
 
           if (!isNaN(originalPrice) && !isNaN(usdPrice)) {
-            // Construct display string based on the requirement
             if (originalCurrency === "USD") {
               displayString = `${formatCurrencyNumber(originalPrice)} USD`;
             } else {
               displayString = `${formatCurrencyNumber(originalPrice)} ${originalCurrency} (USD ${formatCurrencyNumber(usdPrice)})`;
             }
-            
-            console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Supplier '${supplierName}', OrigPrice: ${originalPrice}, OrigCurr: ${originalCurrency}, UsdPrice: ${usdPrice}, Display: '${displayString}'`);
             offers[supplierName] = displayString;
-
-            // Use usdPrice for winner calculation
             if (usdPrice < lowestPriceUsd) {
               lowestPriceUsd = usdPrice;
               winner = supplierName;
-              console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: New winner found: ${winner} at USD ${lowestPriceUsd}`);
             }
           } else {
-             console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Invalid price (Orig: ${offer.originalPrice}, USD: ${offer.usdPrice}), setting display to N/A.`);
              offers[supplierName] = "N/A (Invalid Price)";
           }
         });
       }
 
-      if (lowestPriceUsd === Infinity) {
-        winner = "N/A";
-      }
-      console.log(`DEBUG: Product ${pIndex} (${product.itemNo}) final offers:`, offers);
-      console.log(`DEBUG: Product ${pIndex} (${product.itemNo}) final winner: ${winner}`);
-
-      // Return product data with formatted offers
+      if (lowestPriceUsd === Infinity) winner = "N/A";
+      
       return {
-        ...product,
+        itemNo: product.itemNo,
+        description: product.description,
+        size: product.size || "N/A",
+        manufacturer: product.manufacturer || "N/A",
+        brand: product.brand || "N/A",
         offers: offers,
         winner: winner
       };
     });
-    // *** DETAILED LOGGING END ***
 
-    // 5. Send response
     const finalResponse = {
         products: processedProducts,
-        suppliers: Array.from(uniqueSuppliers) // Convert Set to Array for JSON
+        suppliers: Array.from(uniqueSuppliers).sort() // Sort suppliers for consistent column order
     };
-    console.log("DEBUG: Final response being sent:", JSON.stringify(finalResponse, null, 2));
     console.log("--- SEARCH END ---");
     res.json(finalResponse);
 
@@ -204,6 +151,150 @@ router.post("/", protect, async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 });
+
+// @desc    Export search results to CSV
+// @route   POST /api/search/export
+// @access  Private
+router.post("/export", protect, async (req, res) => {
+  try {
+    const { itemNumbers, manufacturer } = req.body;
+
+    if (!itemNumbers || !Array.isArray(itemNumbers) || itemNumbers.length === 0) {
+      return res.status(400).json({ message: "Item numbers array is required" });
+    }
+
+    const itemNoArray = itemNumbers.map(item => item.trim());
+    console.log("--- EXPORT START ---");
+    console.log("DEBUG: Exporting for item numbers:", itemNoArray);
+    if (manufacturer) {
+        console.log("DEBUG: Filtering by manufacturer:", manufacturer);
+    }
+
+    let query = { itemNo: { $in: itemNoArray } };
+    if (manufacturer && manufacturer !== "All" && manufacturer !== "") {
+        query.manufacturer = manufacturer;
+    }
+    console.log("DEBUG: Using query:", query);
+
+    // --- Fetch and process data (similar to search) ---
+    const products = await Product.find(query)
+        .select("+supplierOffers.originalPrice +supplierOffers.originalCurrency +supplierOffers.usdPrice")
+        .lean();
+    console.log(`DEBUG: Found ${products.length} products matching query for export.`);
+
+    if (!products || products.length === 0) {
+        console.log("DEBUG: No products found, returning empty CSV.");
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="search_results.csv"');
+        return res.status(200).send(''); // Send empty response
+    }
+
+    let supplierIds = new Set();
+    products.forEach(product => {
+        if (product.supplierOffers && Array.isArray(product.supplierOffers)) {
+            product.supplierOffers.forEach(offer => {
+                if (offer.supplier && mongoose.Types.ObjectId.isValid(offer.supplier)) {
+                    supplierIds.add(offer.supplier.toString());
+                }
+            });
+        }
+    });
+    const uniqueSupplierIds = Array.from(supplierIds).map(id => new mongoose.Types.ObjectId(id));
+
+    let supplierMap = {};
+    let uniqueSuppliers = new Set();
+    if (uniqueSupplierIds.length > 0) {
+        const suppliers = await Supplier.find({ _id: { $in: uniqueSupplierIds } }).select('name _id');
+        suppliers.forEach(supplier => {
+            supplierMap[supplier._id.toString()] = supplier.name;
+            uniqueSuppliers.add(supplier.name);
+        });
+    }
+    const sortedSuppliers = Array.from(uniqueSuppliers).sort(); // Sort for consistent column order
+    console.log("DEBUG: Sorted suppliers for export columns:", sortedSuppliers);
+
+    // --- Prepare data for CSV --- 
+    const csvData = products.map(product => {
+      let rowData = {
+        'Item Number': product.itemNo,
+        'Description': product.description,
+        'Size': product.size || "N/A",
+        'Manufacturer': product.manufacturer || "N/A",
+        'Brand': product.brand || "N/A",
+      };
+      let winner = null;
+      let lowestPriceUsd = Infinity;
+
+      // Add supplier prices to rowData
+      sortedSuppliers.forEach(supplierName => {
+          rowData[`${supplierName} Price`] = "N/A"; // Default value
+      });
+
+      if (product.supplierOffers && Array.isArray(product.supplierOffers)) {
+        product.supplierOffers.forEach(offer => {
+          const supplierIdStr = offer.supplier?.toString();
+          const supplierName = supplierMap[supplierIdStr]; 
+          if (!offer || !supplierName || offer.originalPrice === undefined || offer.originalCurrency === undefined || offer.usdPrice === undefined) return;
+
+          const originalPrice = parseFloat(offer.originalPrice);
+          const originalCurrency = offer.originalCurrency.toUpperCase();
+          const usdPrice = parseFloat(offer.usdPrice);
+          let displayString = "N/A";
+
+          if (!isNaN(originalPrice) && !isNaN(usdPrice)) {
+            if (originalCurrency === "USD") {
+              displayString = `${formatCurrencyNumber(originalPrice)} USD`;
+            } else {
+              displayString = `${formatCurrencyNumber(originalPrice)} ${originalCurrency} (USD ${formatCurrencyNumber(usdPrice)})`;
+            }
+            rowData[`${supplierName} Price`] = displayString; // Use the same display string as the table
+            
+            if (usdPrice < lowestPriceUsd) {
+              lowestPriceUsd = usdPrice;
+              winner = supplierName;
+            }
+          } else {
+             rowData[`${supplierName} Price`] = "N/A (Invalid Price)";
+          }
+        });
+      }
+
+      if (lowestPriceUsd === Infinity) winner = "N/A";
+      rowData['Winner'] = winner;
+      
+      return rowData;
+    });
+
+    // --- Define CSV Fields --- 
+    const fields = [
+        'Item Number',
+        'Description',
+        'Size',
+        'Manufacturer',
+        'Brand',
+        ...sortedSuppliers.map(name => `${name} Price`), // Dynamic supplier columns
+        'Winner'
+    ];
+    console.log("DEBUG: CSV Fields:", fields);
+
+    // --- Convert to CSV --- 
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(csvData);
+    console.log("DEBUG: CSV generated successfully.");
+
+    // --- Send CSV Response --- 
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="search_results.csv"');
+    console.log("--- EXPORT END ---");
+    res.status(200).send(csv);
+
+  } catch (error) {
+    console.error("Export error:", error);
+    console.log("--- EXPORT END (ERROR) ---");
+    res.status(500).json({ message: "Server Error during export" });
+  }
+});
+
 
 // Keep the GET route for text search if needed (might need adaptation later)
 router.get("/text", protect, async (req, res) => {
