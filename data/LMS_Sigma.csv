@@ -1,0 +1,101 @@
+SN,PART #,DESCRIPTION,UOM,BRAND,PRICE,CURRENCY
+1,00010-100G,Abietic acid,100G,Sigma Aldrich,149.73,EUR
+2,00010-25G,Abietic acid,25G,Sigma Aldrich,85.65,EUR
+3,00017-25MG,Acacetin,25MG,Sigma Aldrich,161.04,EUR
+4,00020590-100MG,"1,8-Cineole",100MG,Sigma Aldrich,307.65,EUR
+5,00032-10MG,"1H-1,2,4-Triazole-¹³C₂,¹⁵N₃",10MG,Sigma Aldrich,330.75,EUR
+6,00036-10ML,"ESI Tuning Mix, for Ion Trap",10ML,Sigma Aldrich,154.35,EUR
+7,00040590-100MG,α-Pinene,100MG,Sigma Aldrich,279.3,EUR
+8,00070-100ML,Acetaldehyde,100ML,Sigma Aldrich,69.94,EUR
+9,00070-1L,Acetaldehyde,1L,Sigma Aldrich,229.71,EUR
+10,00070-500ML,Acetaldehyde,500ML,Sigma Aldrich,170.19,EUR
+11,00071-100ML,Acetaldehyde,100ML,Sigma Aldrich,55.52,EUR
+12,00071-1L,Acetaldehyde,1L,Sigma Aldrich,150.66,EUR
+13,00071-500ML,Acetaldehyde,500ML,Sigma Aldrich,132.99,EUR
+14,00071-5ML,Acetaldehyde,5ML,Sigma Aldrich,27.81,EUR
+15,00090-100G,Acetaldehyde ammonia trimer,100G,Sigma Aldrich,75.98,EUR
+16,00090590-25MG,Aucubin,25MG,Sigma Aldrich,361.2,EUR
+17,000J004,DSD-DNPH Color Cap Insert,EACH,Sigma Aldrich,35.43,EUR
+18,00140585-25MG,Isoquercitrin,25MG,Sigma Aldrich,386.4,EUR
+19,00147-1G,Fmoc-Tyr(PO₃H₂)-OH,1G,Sigma Aldrich,254.82,EUR
+20,00160-1KG,Acetamide,1KG,Sigma Aldrich,106.48,EUR
+21,00160-250G,Acetamide,250G,Sigma Aldrich,43.47,EUR
+22,00160-50G,Acetamide,50G,Sigma Aldrich,25.43,EUR
+23,00166-1KG,Eschka’s Reagent,1KG,Sigma Aldrich,1386.1,EUR
+24,00170580-10MG,Ginsenoside Rb1,10MG,Sigma Aldrich,480.9,EUR
+25,00180585-25MG,Hyperoside,25MG,Sigma Aldrich,369.6,EUR
+26,00185-500G,Acetamide Nutrient Broth,500G,Sigma Aldrich,192.56,EUR
+27,00190585-10MG,Hypericin,10MG,Sigma Aldrich,550.2,EUR
+28,00194-100G,ACES,100G,Sigma Aldrich,405.87,EUR
+29,00200595-50MG,Quercetin dihydrate,50MG,Sigma Aldrich,353.85,EUR
+30,00234-1KG,"AMBERLITE IRN-150, H(+)- AND OH(-)-FORM&",1KG,Sigma Aldrich,238.08,EUR
+31,00239-10ML-F,"Micro particles, magnetic, carboxy functionalized",F,Sigma Aldrich,840.0,EUR
+32,00268-500MG,Dextran,500MG,Sigma Aldrich,790.65,EUR
+33,00269-100MG,Dextran,100MG,Sigma Aldrich,168.0,EUR
+34,00269-500MG,Dextran,500MG,Sigma Aldrich,789.6,EUR
+35,00270-100MG,Dextran,100MG,Sigma Aldrich,162.75,EUR
+36,00270-500MG,Dextran,500MG,Sigma Aldrich,804.3,EUR
+37,00271-100MG,Dextran,100MG,Sigma Aldrich,166.95,EUR
+38,00278-5ML-F,Ethanolamine,F,Sigma Aldrich,192.15,EUR
+39,00280590-10MG,Curcumin,10MG,Sigma Aldrich,231.0,EUR
+40,00285-50G-F,1-Butylpyridinium bromide,F,Sigma Aldrich,196.23,EUR
+41,00285-5G-F,1-Butylpyridinium bromide,F,Sigma Aldrich,44.27,EUR
+42,00290-10MG,(−)-Sinigrin hydrate,10MG,Sigma Aldrich,135.45,EUR
+43,00291-5MG,"Chlormequat-1,1,2,2-d₄ chloride",5MG,Sigma Aldrich,740.25,EUR
+44,00297-10MG,Isopentenyl pyrophosphate trilithium salt,10MG,Sigma Aldrich,422.38,EUR
+45,00297-50MG,Isopentenyl pyrophosphate trilithium salt,50MG,Sigma Aldrich,1715.0,EUR
+46,00298-25MG,Yellow 2G,25MG,Sigma Aldrich,156.45,EUR
+47,00300590-50MG,Rutin trihydrate,50MG,Sigma Aldrich,247.8,EUR
+48,00307-100G,ADA,100G,Sigma Aldrich,302.95,EUR
+49,00310590-25MG,Quercetin 3-glucuronide,25MG,Sigma Aldrich,537.6,EUR
+50,00320188-100MG,(−)-α-Bisabolol,100MG,Sigma Aldrich,199.5,EUR
+51,00334-5MG,"Fipronil-(pyrazole-¹³C₃, cyano-¹³C) sulfone",5MG,Sigma Aldrich,353.85,EUR
+52,00347-1G,Fmoc-allyl-Gly-OH,1G,Sigma Aldrich,207.39,EUR
+53,00350190-100MG,Linalool,100MG,Sigma Aldrich,267.75,EUR
+54,00370580-10MG,Ginsenoside Rg1,10MG,Sigma Aldrich,480.9,EUR
+55,00375-1G,"4-Acetamido-2,2,6,6-tetramethylpiperidine 1-oxyl",1G,Sigma Aldrich,53.1,EUR
+56,00375-5G,"4-Acetamido-2,2,6,6-tetramethylpiperidine 1-oxyl",5G,Sigma Aldrich,243.66,EUR
+57,00379-1MG-F,Atto 495 NHS ester,F,Sigma Aldrich,213.64,EUR
+58,00390580-25MG,Rosmarinic acid,25MG,Sigma Aldrich,413.7,EUR
+59,00397-250MG,Fmoc-propargyl-Gly-OH,250MG,Sigma Aldrich,113.46,EUR
+60,00401-5G,Acetanilide,5G,Sigma Aldrich,77.75,EUR
+61,00410-100ML,Ethyl acetoacetate,100ML,Sigma Aldrich,41.66,EUR
+62,00410-1L,Ethyl acetoacetate,1L,Sigma Aldrich,53.2,EUR
+63,00413-5G,DDMAB,5G,Sigma Aldrich,402.55,EUR
+64,00420580-25MG,Harpagoside,25MG,Sigma Aldrich,352.8,EUR
+65,00442-50MG,4-Aminoazobenzene,50MG,Sigma Aldrich,155.4,EUR
+66,00446-25DISCS,Universal Microbial Limit Test Membrane,25DISCS,Sigma Aldrich,57.19,EUR
+67,00456-50MG,2-{2-[(2-Bromo-6-chlorophenyl)amino]phenyl}acetic acid,50MG,Sigma Aldrich,462.0,EUR
+68,00457-1ML-F,Magnesium chloride solution,F,Sigma Aldrich,79.58,EUR
+69,00462-100ML,Sodium Standard for ICP,100ML,Sigma Aldrich,121.8,EUR
+70,00469-5ML,α-Ionol,5ML,Sigma Aldrich,35.74,EUR
+71,00483-100ML,Isobutyl acetoacetate,100ML,Sigma Aldrich,48.92,EUR
+72,00496-5ML,cis-4-Hepten-1-ol,5ML,Sigma Aldrich,37.11,EUR
+73,00500590-25MG,Chlorogenic acid,25MG,Sigma Aldrich,324.45,EUR
+74,00505-100G-F,Methyl acetoacetate sodium salt,F,Sigma Aldrich,43.9,EUR
+75,00530580-25MG,Sennoside B,25MG,Sigma Aldrich,426.3,EUR
+76,00537-10MG,3-(4-Hydroxyphenyl)-ᴅʟ-lactic acid-¹³C₉,10MG,Sigma Aldrich,513.45,EUR
+77,00537-1MG,3-(4-Hydroxyphenyl)-ᴅʟ-lactic acid-¹³C₉,1MG,Sigma Aldrich,126.0,EUR
+78,00538-1MG,Chlorophyll b,1MG,Sigma Aldrich,295.05,EUR
+79,00541-1G,Ruthenium Red,1G,Sigma Aldrich,234.06,EUR
+80,00541-5G,Ruthenium Red,5G,Sigma Aldrich,799.29,EUR
+81,00542-10MG,Maltotetraose,10MG,Sigma Aldrich,63.21,EUR
+82,00563-500G-F,MM ChromoSelect Agar,F,Sigma Aldrich,165.17,EUR
+83,00580590-100MG,(−)-Menthol,100MG,Sigma Aldrich,291.9,EUR
+84,00590590-100MG,(R)-(+)-Limonene,100MG,Sigma Aldrich,228.9,EUR
+85,00612-2.5L,Water,2.5L,Sigma Aldrich,44.65,EUR
+86,00612-5L,Water,5L,Sigma Aldrich,76.53,EUR
+87,00630590-25MG,Bisabolol oxide A,25MG,Sigma Aldrich,469.35,EUR
+88,00634-1KG,Ammonium tetrachlorocuprate(II) dihydrate,1KG,Sigma Aldrich,124.62,EUR
+89,00634-250G,Ammonium tetrachlorocuprate(II) dihydrate,250G,Sigma Aldrich,42.22,EUR
+90,00675-500ML,Tributyl phosphate,500ML,Sigma Aldrich,504.64,EUR
+91,00676-10G,Trioctylphosphine oxide,10G,Sigma Aldrich,68.82,EUR
+92,00720585-10MG,Apigenin 7-glucoside,10MG,Sigma Aldrich,453.6,EUR
+93,00734-100ML,Indium Standard for ICP,100ML,Sigma Aldrich,116.55,EUR
+94,00740580-25MG,Quercitrin,25MG,Sigma Aldrich,475.65,EUR
+95,00744-10MG-F,Magnesium ionophore VII,F,Sigma Aldrich,575.52,EUR
+96,00750-250G,Acetone oxime,250G,Sigma Aldrich,85.84,EUR
+97,00768-50G-F,1-Ethyl-3-methylimidazolium tetrafluoroborate,F,Sigma Aldrich,572.88,EUR
+98,00768-5G-F,1-Ethyl-3-methylimidazolium tetrafluoroborate,F,Sigma Aldrich,161.82,EUR
+99,00770590-25MG,Ginkgolide A,25MG,Sigma Aldrich,405.3,EUR
+100,00790-250ML,Acetophenone,250ML,Sigma Aldrich,59.24,EUR
