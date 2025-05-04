@@ -154,8 +154,9 @@ const upsertData = async (suppliersList, productsList) => {
               }
               const newOffer = {
                 supplier: supplierId,
-                price: offer.price,
-                currency: offer.currency || 'USD',
+                originalPrice: offer.originalPrice, // Save original price
+                originalCurrency: offer.originalCurrency, // Save original currency
+                usdPrice: offer.usdPrice, // Save calculated USD price
                 catalogNo: offer.catalogNo || undefined,
               };
               return newOffer;
