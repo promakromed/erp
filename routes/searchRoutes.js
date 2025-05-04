@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const axios = require("axios");
+const axios = require("axios"); // Keep for potential future use, though rate fetching moved to Python
 const mongoose = require("mongoose"); // Needed for ObjectId check
 const { protect } = require("../middleware/authMiddleware");
 const Product = require("../models/productModel");
@@ -14,22 +14,7 @@ function formatCurrencyNumber(num) {
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Helper function to get exchange rate
-async function getGbpToUsdRate() {
-  try {
-    const response = await axios.get("https://open.er-api.com/v6/latest/GBP");
-    if (response.data && response.data.result === "success" && response.data.rates && response.data.rates.USD) {
-      // console.log(`Fetched GBP to USD rate: ${response.data.rates.USD}`); // Less verbose logging
-      return response.data.rates.USD;
-    } else {
-      console.error("Error fetching or parsing exchange rate data:", response.data);
-      return null;
-    }
-  } catch (error) {
-    console.error("Error fetching exchange rate from API:", error.message);
-    return null;
-  }
-}
+// Removed getGbpToUsdRate function as conversion now happens during import
 
 // @desc    Search products by item number (Handles POST request from frontend)
 // @route   POST /api/search
@@ -46,18 +31,14 @@ router.post("/", protect, async (req, res) => {
     console.log("--- SEARCH START ---");
     console.log("DEBUG: Searching for item numbers:", itemNoArray);
 
-    const gbpToUsdRate = await getGbpToUsdRate();
-    const conversionBuffer = 1.03; // 3% buffer
-
-    if (gbpToUsdRate === null) {
-      console.warn("Proceeding without currency conversion due to API error.");
-    }
-
     // --- Manual Population Strategy --- 
 
     // 1. Find products without population
     console.log("DEBUG: Finding products (manual population)...");
-    const products = await Product.find({ itemNo: { $in: itemNoArray } }).lean(); // Use .lean() for plain JS objects
+    // Select the necessary fields including the new price fields
+    const products = await Product.find({ itemNo: { $in: itemNoArray } })
+        .select("+supplierOffers.originalPrice +supplierOffers.originalCurrency +supplierOffers.usdPrice") // Ensure these are selected if not default
+        .lean(); // Use .lean() for plain JS objects
     console.log(`DEBUG: Found ${products.length} products.`);
 
     if (!products || products.length === 0) {
@@ -66,7 +47,9 @@ router.post("/", protect, async (req, res) => {
     }
 
     // *** DETAILED LOGGING START ***
-    console.log("DEBUG: Raw product data (first product):", JSON.stringify(products[0], null, 2));
+    if (products.length > 0) {
+        console.log("DEBUG: Raw product data (first product):", JSON.stringify(products[0], null, 2));
+    }
 
     // 2. Collect unique supplier ObjectIds
     let supplierIds = new Set();
@@ -124,40 +107,36 @@ router.post("/", protect, async (req, res) => {
           const supplierName = supplierMap[supplierIdStr]; 
           console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Supplier ID String: ${supplierIdStr}, Mapped Name: ${supplierName}`);
 
-          if (!offer || !supplierName || offer.price === undefined || offer.price === null || !offer.currency) {
-            console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Skipping offer due to missing data (Offer: ${!!offer}, Name: ${!!supplierName}, Price: ${offer?.price}, Currency: ${offer?.currency})`);
+          // Check for essential fields from the updated schema
+          if (!offer || !supplierName || offer.originalPrice === undefined || offer.originalCurrency === undefined || offer.usdPrice === undefined) {
+            console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Skipping offer due to missing data (Offer: ${!!offer}, Name: ${!!supplierName}, OrigPrice: ${offer?.originalPrice}, OrigCurr: ${offer?.originalCurrency}, UsdPrice: ${offer?.usdPrice})`);
             return;
           }
 
-          const price = parseFloat(offer.price);
-          const currency = offer.currency.toUpperCase();
-          let usdEquivalent = null;
+          const originalPrice = parseFloat(offer.originalPrice);
+          const originalCurrency = offer.originalCurrency.toUpperCase();
+          const usdPrice = parseFloat(offer.usdPrice);
           let displayString = "N/A";
 
-          if (!isNaN(price)) {
-            if (currency === "GBP" && gbpToUsdRate !== null) {
-              usdEquivalent = price * gbpToUsdRate * conversionBuffer;
-              displayString = `${formatCurrencyNumber(price)} GBP (USD ${formatCurrencyNumber(usdEquivalent)})`;
-            } else if (currency === "USD") {
-              usdEquivalent = price;
-              displayString = `${formatCurrencyNumber(price)} USD`;
-            } else if (currency === "GBP" && gbpToUsdRate === null) {
-              usdEquivalent = Infinity;
-              displayString = `${formatCurrencyNumber(price)} GBP`;
+          if (!isNaN(originalPrice) && !isNaN(usdPrice)) {
+            // Construct display string based on the requirement
+            if (originalCurrency === "USD") {
+              displayString = `${formatCurrencyNumber(originalPrice)} USD`;
             } else {
-              usdEquivalent = Infinity;
-              displayString = `${formatCurrencyNumber(price)} ${currency}`;
+              displayString = `${formatCurrencyNumber(originalPrice)} ${originalCurrency} (USD ${formatCurrencyNumber(usdPrice)})`;
             }
-            console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Supplier '${supplierName}', Price: ${price}, Currency: ${currency}, USD Equiv: ${usdEquivalent}, Display: '${displayString}'`);
+            
+            console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Supplier '${supplierName}', OrigPrice: ${originalPrice}, OrigCurr: ${originalCurrency}, UsdPrice: ${usdPrice}, Display: '${displayString}'`);
             offers[supplierName] = displayString;
 
-            if (usdEquivalent < lowestPriceUsd) {
-              lowestPriceUsd = usdEquivalent;
+            // Use usdPrice for winner calculation
+            if (usdPrice < lowestPriceUsd) {
+              lowestPriceUsd = usdPrice;
               winner = supplierName;
               console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: New winner found: ${winner} at USD ${lowestPriceUsd}`);
             }
           } else {
-             console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Invalid price (${offer.price}), setting display to N/A.`);
+             console.log(`DEBUG: Product ${pIndex}, Offer ${oIndex}: Invalid price (Orig: ${offer.originalPrice}, USD: ${offer.usdPrice}), setting display to N/A.`);
              offers[supplierName] = "N/A (Invalid Price)";
           }
         });
