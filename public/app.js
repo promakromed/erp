@@ -88,7 +88,7 @@ async function populateManufacturers() {
   console.log("DEBUG: Attempting to populate manufacturers dropdown.");
   try {
     const manufacturers = await fetchWithAuth(`${API_URL}/search/manufacturers`);
-    manufacturerSelect.innerHTML = "; // Clear existing options except default
+    manufacturerSelect.innerHTML = '<option value="" selected>All Manufacturers</option>'; // Clear existing options except default
     
     if (manufacturers && Array.isArray(manufacturers)) {
       console.log(`DEBUG: Received ${manufacturers.length} manufacturers.`);
