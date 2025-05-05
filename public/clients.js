@@ -1,10 +1,13 @@
 const API_URL = 'https://proerp-b0dfb327892c.herokuapp.com/api'; // Ensure this matches your deployed backend URL
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Run checkAuth but don't block execution based on its return value for now
-    checkAuth(); 
+    // Check authentication immediately
+    if (!checkAuth()) {
+        // If checkAuth returns false (meaning redirect is needed), stop further execution
+        return; 
+    }
 
-    // Proceed with setting up the page regardless of initial checkAuth outcome
+    // If checkAuth passes, proceed with setting up the page
     const clientForm = document.getElementById('client-form');
     const clientTableBody = document.querySelector('#client-table tbody');
     const clientFormMessage = document.getElementById('client-form-message');
@@ -37,33 +40,43 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAndDisplayClients();
 });
 
+// Function to get the authentication token from localStorage
+function getAuthToken() {
+    try {
+        const userInfoString = localStorage.getItem('userInfo');
+        if (!userInfoString) {
+            console.log("DEBUG: No 'userInfo' found in localStorage.");
+            return null;
+        }
+        const userInfo = JSON.parse(userInfoString);
+        if (!userInfo || !userInfo.token) {
+            console.log("DEBUG: 'userInfo' found but no token inside.", userInfo);
+            return null;
+        }
+        // console.log("DEBUG: Token successfully retrieved from userInfo.");
+        return userInfo.token;
+    } catch (error) {
+        console.error("Error parsing userInfo from localStorage:", error);
+        return null;
+    }
+}
+
 function checkAuth() {
     console.log("DEBUG: checkAuth() called on clients.js");
-    const token = localStorage.getItem('token');
-    console.log("DEBUG: Token retrieved from localStorage:", token); // Log the actual token value
-
-    // Log all localStorage items for comparison
-    try {
-        console.log("DEBUG: Full localStorage content:", JSON.stringify(localStorage));
-    } catch (e) {
-        console.error("DEBUG: Could not stringify localStorage", e);
-    }
+    const token = getAuthToken();
 
     if (!token) {
-        console.error("CRITICAL: No token found in localStorage! Redirect is REMOVED for debugging.");
-        // window.location.href = 'login.html'; // *** REDIRECT COMPLETELY REMOVED ***
-        // We will let the API calls fail and show errors on the page instead.
-        return false; // Indicate authentication check failed (though we don't block based on this now)
+        console.error("CRITICAL: No valid token found! Redirecting to login.");
+        window.location.href = 'login.html'; // *** REDIRECT RESTORED ***
+        return false; // Indicate authentication failed
     } else {
-        console.log("DEBUG: Token found during initial checkAuth.");
-        // Optional: Add a check here to verify the token with the backend
-        // Example: verifyTokenWithBackend(token);
+        console.log("DEBUG: Token found. Authentication check passed.");
         return true; // Indicate authentication passed
     }
 }
 
 function logout() {
-    localStorage.removeItem('token');
+    localStorage.removeItem('userInfo'); // Ensure correct key is removed
     window.location.href = 'login.html';
 }
 
@@ -72,13 +85,12 @@ function showMessage(element, message, isError = false) {
         element.textContent = message;
         element.className = isError ? 'message error' : 'message success';
         element.style.display = 'block';
-        // Automatically hide message after 5 seconds
         // Clear previous timeout if exists
         if (element.timeoutId) {
             clearTimeout(element.timeoutId);
         }
         element.timeoutId = setTimeout(() => {
-            if (element.style.display !== 'none') { // Check if still visible
+            if (element.style.display !== 'none') { 
                  element.style.display = 'none';
                  element.textContent = '';
             }
@@ -102,7 +114,6 @@ function populateCountryCodes() {
         // Add more countries as required
     ];
 
-    // Clear existing options first
     countryCodeSelect.innerHTML = '<option value="">Select Code</option>'; 
 
     countryCodes.forEach(country => {
@@ -121,11 +132,11 @@ async function fetchAndDisplayClients() {
     showMessage(clientListMessage, 'Loading clients...', false);
 
     try {
-        const token = localStorage.getItem('token');
-        // Re-check token just before fetch
+        const token = getAuthToken();
         if (!token) {
              console.error("Token missing before fetching clients.");
-             throw new Error("Authentication token missing. Cannot fetch clients. Please log in again.");
+             checkAuth(); // Trigger redirect if token is missing
+             return; // Stop execution
         }
         
         const response = await fetch(`${API_URL}/clients`, {
@@ -136,11 +147,10 @@ async function fetchAndDisplayClients() {
             }
         });
 
-        if (response.status === 401) { // Handle unauthorized specifically
+        if (response.status === 401) { 
              console.error("Unauthorized access fetching clients. Token might be invalid or expired.");
-             // Don't logout automatically here, show error message first
-             // logout(); 
-             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
+             logout(); // Force logout if token is invalid
+             return; 
         }
         
         if (!response.ok) {
@@ -149,7 +159,7 @@ async function fetchAndDisplayClients() {
         }
 
         const clients = await response.json();
-        clientTableBody.innerHTML = ''; // Clear existing rows
+        clientTableBody.innerHTML = ''; 
 
         if (clients.length === 0) {
             showMessage(clientListMessage, 'No clients found.', false);
@@ -170,13 +180,11 @@ async function fetchAndDisplayClients() {
                     </td>
                 `;
             });
-            // Hide the message area if data is successfully loaded
             clientListMessage.style.display = 'none'; 
-            if (clientListMessage.timeoutId) clearTimeout(clientListMessage.timeoutId); // Clear timeout if message was shown
+            if (clientListMessage.timeoutId) clearTimeout(clientListMessage.timeoutId); 
         }
     } catch (error) {
         console.error('Error fetching clients:', error);
-        // Display the error prominently on the page
         showMessage(clientListMessage, `Error fetching clients: ${error.message}`, true);
     }
 }
@@ -198,7 +206,6 @@ async function handleSaveClient(event) {
         country: document.getElementById('country').value.trim(),
     };
 
-    // Basic frontend validation (more robust validation on backend)
     if (!clientData.companyName || !clientData.clientName || !clientData.email || !clientData.phoneCountryCode || !clientData.phoneNumber || !clientData.address || !clientData.city || !clientData.country) {
         showMessage(clientFormMessage, 'Please fill in all required fields.', true);
         return;
@@ -208,10 +215,11 @@ async function handleSaveClient(event) {
     const url = clientId ? `${API_URL}/clients/${clientId}` : `${API_URL}/clients`;
 
     try {
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
          if (!token) {
              console.error("Token missing before saving client.");
-             throw new Error("Authentication token missing. Cannot save client. Please log in again.");
+             checkAuth(); // Trigger redirect
+             return;
         }
         
         const response = await fetch(url, {
@@ -225,7 +233,8 @@ async function handleSaveClient(event) {
 
         if (response.status === 401) { 
              console.error("Unauthorized access saving client. Token might be invalid or expired.");
-             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
+             logout(); 
+             return; 
         }
 
         if (!response.ok) {
@@ -236,7 +245,7 @@ async function handleSaveClient(event) {
         const result = await response.json();
         showMessage(clientFormMessage, `Client ${clientId ? 'updated' : 'added'} successfully!`, false);
         resetForm();
-        fetchAndDisplayClients(); // Refresh the list
+        fetchAndDisplayClients(); 
 
     } catch (error) {
         console.error(`Error ${clientId ? 'updating' : 'adding'} client:`, error);
@@ -262,10 +271,11 @@ function handleTableActions(event) {
 async function populateFormForEdit(clientId) {
     const clientFormMessage = document.getElementById('client-form-message');
     try {
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
          if (!token) {
              console.error("Token missing before loading client for edit.");
-             throw new Error("Authentication token missing. Cannot load client for edit. Please log in again.");
+             checkAuth(); // Trigger redirect
+             return;
         }
         
         const response = await fetch(`${API_URL}/clients/${clientId}`, {
@@ -278,7 +288,8 @@ async function populateFormForEdit(clientId) {
 
         if (response.status === 401) { 
              console.error("Unauthorized access loading client. Token might be invalid or expired.");
-             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
+             logout(); 
+             return; 
         }
 
         if (!response.ok) {
@@ -300,7 +311,7 @@ async function populateFormForEdit(clientId) {
 
         document.getElementById('cancel-edit-button').style.display = 'inline-block';
         document.querySelector('#client-form button[type="submit"]').textContent = 'Update Client';
-        window.scrollTo(0, 0); // Scroll to top to see the form
+        window.scrollTo(0, 0); 
 
     } catch (error) {
         console.error('Error fetching client details for edit:', error);
@@ -311,10 +322,11 @@ async function populateFormForEdit(clientId) {
 async function handleDeleteClient(clientId) {
     const clientListMessage = document.getElementById('client-list-message');
     try {
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
          if (!token) {
              console.error("Token missing before deleting client.");
-             throw new Error("Authentication token missing. Cannot delete client. Please log in again.");
+             checkAuth(); // Trigger redirect
+             return;
         }
         
         const response = await fetch(`${API_URL}/clients/${clientId}`, {
@@ -327,11 +339,11 @@ async function handleDeleteClient(clientId) {
 
        if (response.status === 401) { 
              console.error("Unauthorized access deleting client. Token might be invalid or expired.");
-             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
+             logout(); 
+             return; 
         }
 
         if (!response.ok) {
-            // Handle cases where deletion fails on the server (e.g., client not found)
             let errorMsg = `HTTP error! status: ${response.status}`;
             try {
                  const errorData = await response.json();
@@ -340,10 +352,8 @@ async function handleDeleteClient(clientId) {
             throw new Error(errorMsg);
         }
 
-        // Assuming successful deletion returns the ID or a success message
-        // const result = await response.json(); 
         showMessage(clientListMessage, 'Client deleted successfully!', false);
-        fetchAndDisplayClients(); // Refresh the list
+        fetchAndDisplayClients(); 
 
     } catch (error) {
         console.error('Error deleting client:', error);
