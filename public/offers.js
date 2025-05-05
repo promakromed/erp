@@ -6,6 +6,7 @@ let currentOfferId = null; // To track which offer is being edited
 
 // Check if user is logged in
 function checkAuth() {
+    console.log("DEBUG: checkAuth() called"); // Debug log
     const userInfo = localStorage.getItem("userInfo");
     if (!userInfo) {
         console.log("DEBUG: No userInfo found in localStorage, redirecting to login.");
@@ -37,12 +38,14 @@ function checkAuth() {
 
 // Logout function
 function logout() {
+    console.log("DEBUG: logout() called"); // Debug log
     localStorage.removeItem("userInfo");
     window.location.href = "login.html";
 }
 
 // --- API Helper ---
 async function fetchApi(endpoint, options = {}) {
+    console.log(`DEBUG: fetchApi called for endpoint: ${endpoint}`); // Debug log
     const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
     const token = userInfo.token;
 
@@ -57,6 +60,7 @@ async function fetchApi(endpoint, options = {}) {
 
     try {
         const response = await fetch(`${API_URL}${endpoint}`, options);
+        console.log(`DEBUG: fetchApi response status for ${endpoint}: ${response.status}`); // Debug log
         if (!response.ok) {
             // Try to parse error message from backend
             let errorData;
@@ -70,16 +74,19 @@ async function fetchApi(endpoint, options = {}) {
         }
         // Handle no content responses
         if (response.status === 204) {
-            return null; 
+            return null;
         }
         // Handle potential binary data (PDF/CSV)
         const contentType = response.headers.get("content-type");
         if (contentType && (contentType.includes("application/pdf") || contentType.includes("text/csv"))) {
+            console.log(`DEBUG: fetchApi returning response object for binary data (${contentType})`); // Debug log
             return response; // Return the whole response for blob handling
         }
-        return await response.json();
+        const jsonData = await response.json();
+        console.log(`DEBUG: fetchApi successful for ${endpoint}`); // Debug log
+        return jsonData;
     } catch (error) {
-        console.error("API Fetch Error:", error);
+        console.error(`API Fetch Error for ${endpoint}:`, error); // Debug log
         // Display error to user?
         throw error; // Re-throw to be caught by calling function
     }
@@ -88,11 +95,12 @@ async function fetchApi(endpoint, options = {}) {
 // --- UI Display Functions ---
 
 function displayOffers(offers) {
+    console.log("DEBUG: displayOffers() called"); // Debug log
     const listContainer = document.getElementById("offer-list-container");
     listContainer.innerHTML = "; // Clear previous content
 
     if (!offers || offers.length === 0) {
-        listContainer.innerHTML = 
+        listContainer.innerHTML =
             `<div class="alert alert-info">No offers found.</div>`;
         return;
     }
@@ -131,6 +139,7 @@ function displayOffers(offers) {
     // Add event listeners for view/delete buttons
     listContainer.querySelectorAll(".view-offer-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
+            console.log("DEBUG: View/Edit button clicked"); // Debug log
             e.stopPropagation(); // Prevent row click
             const offerId = e.target.closest("tr").dataset.offerId;
             viewOfferDetails(offerId);
@@ -138,6 +147,7 @@ function displayOffers(offers) {
     });
     listContainer.querySelectorAll(".delete-offer-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
+            console.log("DEBUG: Delete button clicked"); // Debug log
             e.stopPropagation();
             const offerId = e.target.closest("tr").dataset.offerId;
             if (confirm("Are you sure you want to delete this draft offer?")) {
@@ -159,6 +169,7 @@ function getOfferStatusColor(status) {
 }
 
 function populateClientDropdown(clients) {
+    console.log("DEBUG: populateClientDropdown() called"); // Debug log
     const select = document.getElementById("offer-client-select");
     select.innerHTML = "; // Clear existing options
     select.appendChild(new Option("-- Select Client --", "")); // Add default option
@@ -168,6 +179,7 @@ function populateClientDropdown(clients) {
 }
 
 function showOfferList() {
+    console.log("DEBUG: showOfferList() called"); // Debug log
     document.getElementById("offer-list-container").style.display = "block";
     document.getElementById("offer-details-container").style.display = "none";
     currentOfferId = null; // Reset current offer ID
@@ -175,10 +187,11 @@ function showOfferList() {
 }
 
 function showOfferForm(title = "Create Offer", offerData = null) {
+    console.log(`DEBUG: showOfferForm() called. Title: ${title}, Offer ID: ${offerData ? offerData._id : 'New'}`); // Debug log
     document.getElementById("offer-list-container").style.display = "none";
     document.getElementById("offer-details-container").style.display = "block";
     document.getElementById("offer-form-title").textContent = title;
-    
+
     // Reset form
     document.getElementById("offer-form").reset();
     document.getElementById("offer-line-items").innerHTML = "; // Clear line items
@@ -197,9 +210,10 @@ function showOfferForm(title = "Create Offer", offerData = null) {
         document.getElementById("generate-pdf-btn").style.display = "none";
         document.getElementById("generate-csv-btn").style.display = "none";
     }
-    
+
     // Fetch clients for dropdown if creating new or if needed
     if (!offerData || !document.getElementById("offer-client-select").options.length > 1) {
+         console.log("DEBUG: Loading clients for dropdown in showOfferForm"); // Debug log
          loadClientsForDropdown();
     }
 }
@@ -207,17 +221,19 @@ function showOfferForm(title = "Create Offer", offerData = null) {
 // --- Data Loading Functions ---
 
 async function loadOffers() {
+    console.log("DEBUG: loadOffers() called"); // Debug log
     try {
         const offers = await fetchApi("/api/offers");
         displayOffers(offers);
     } catch (error) {
         console.error("Failed to load offers:", error);
-        document.getElementById("offer-list-container").innerHTML = 
+        document.getElementById("offer-list-container").innerHTML =
             `<div class="alert alert-danger">Error loading offers: ${error.message}</div>`;
     }
 }
 
 async function loadClientsForDropdown() {
+    console.log("DEBUG: loadClientsForDropdown() called"); // Debug log
     try {
         const clients = await fetchApi("/api/clients");
         populateClientDropdown(clients);
@@ -228,6 +244,7 @@ async function loadClientsForDropdown() {
 }
 
 async function viewOfferDetails(offerId) {
+    console.log(`DEBUG: viewOfferDetails() called for ID: ${offerId}`); // Debug log
     try {
         const offer = await fetchApi(`/api/offers/${offerId}`);
         showOfferForm(`View/Edit Offer: ${offer.offerId}`, offer);
@@ -240,6 +257,7 @@ async function viewOfferDetails(offerId) {
 // --- Action Functions ---
 
 async function saveOffer(event) {
+    console.log("DEBUG: saveOffer() called"); // Debug log
     event.preventDefault();
     const offerData = {
         clientId: document.getElementById("offer-client-select").value,
@@ -252,14 +270,14 @@ async function saveOffer(event) {
     try {
         let savedOffer;
         if (currentOfferId) {
-            // Update existing offer
+            console.log(`DEBUG: Updating offer ID: ${currentOfferId}`); // Debug log
             savedOffer = await fetchApi(`/api/offers/${currentOfferId}`, {
                 method: "PUT",
                 body: JSON.stringify(offerData),
             });
             alert("Offer updated successfully!");
         } else {
-            // Create new offer
+            console.log("DEBUG: Creating new offer"); // Debug log
             savedOffer = await fetchApi("/api/offers", {
                 method: "POST",
                 body: JSON.stringify(offerData),
@@ -277,6 +295,7 @@ async function saveOffer(event) {
 }
 
 async function deleteOffer(offerId) {
+    console.log(`DEBUG: deleteOffer() called for ID: ${offerId}`); // Debug log
     try {
         await fetchApi(`/api/offers/${offerId}`, { method: "DELETE" });
         alert("Offer deleted successfully.");
@@ -288,11 +307,12 @@ async function deleteOffer(offerId) {
 }
 
 async function generateOutput(format) {
+    console.log(`DEBUG: generateOutput() called for format: ${format}, Offer ID: ${currentOfferId}`); // Debug log
     if (!currentOfferId) return;
     const url = `/api/offers/${currentOfferId}/${format}`;
     try {
         const response = await fetchApi(url, { headers: {} }); // Let fetchApi handle auth
-        
+
         if (!response.ok) {
              throw new Error(`Failed to generate ${format.toUpperCase()}. Status: ${response.status}`);
         }
@@ -326,13 +346,20 @@ async function generateOutput(format) {
 
 // --- Event Listeners ---
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("DEBUG: DOMContentLoaded event fired"); // Debug log
     const userInfo = checkAuth();
-    if (!userInfo) return; // Stop if not authenticated
+    if (!userInfo) {
+        console.log("DEBUG: User not authenticated, stopping script execution."); // Debug log
+        return; // Stop if not authenticated
+    }
 
     // Setup logout button
     const logoutButton = document.getElementById("logout-button");
     if (logoutButton) {
+        console.log("DEBUG: Found logout button, adding listener."); // Debug log
         logoutButton.addEventListener("click", logout);
+    } else {
+        console.error("DEBUG: Logout button not found!"); // Debug log
     }
 
     // Setup navigation highlighting (simple version)
@@ -353,24 +380,47 @@ document.addEventListener("DOMContentLoaded", () => {
     const generateCsvBtn = document.getElementById("generate-csv-btn");
 
     if (createOfferBtn) {
-        createOfferBtn.addEventListener("click", () => showOfferForm("Create New Offer"));
+        console.log("DEBUG: Found create-offer-btn, adding listener."); // Debug log
+        createOfferBtn.addEventListener("click", () => {
+            console.log("DEBUG: Create New Offer button clicked!"); // Debug log
+            showOfferForm("Create New Offer");
+        });
+    } else {
+        console.error("DEBUG: create-offer-btn not found!"); // Debug log
     }
+
     if (cancelOfferBtn) {
+        console.log("DEBUG: Found cancel-offer-btn, adding listener."); // Debug log
         cancelOfferBtn.addEventListener("click", showOfferList);
+    } else {
+        console.error("DEBUG: cancel-offer-btn not found!"); // Debug log
     }
+
     if (offerForm) {
+        console.log("DEBUG: Found offer-form, adding listener."); // Debug log
         offerForm.addEventListener("submit", saveOffer);
+    } else {
+        console.error("DEBUG: offer-form not found!"); // Debug log
     }
+
     if (generatePdfBtn) {
+        console.log("DEBUG: Found generate-pdf-btn, adding listener."); // Debug log
         generatePdfBtn.addEventListener("click", () => generateOutput("pdf"));
+    } else {
+        console.error("DEBUG: generate-pdf-btn not found!"); // Debug log
     }
+
      if (generateCsvBtn) {
+        console.log("DEBUG: Found generate-csv-btn, adding listener."); // Debug log
         generateCsvBtn.addEventListener("click", () => generateOutput("csv"));
+    } else {
+        console.error("DEBUG: generate-csv-btn not found!"); // Debug log
     }
 
     // Initial load
+    console.log("DEBUG: Performing initial load of offers and clients."); // Debug log
     loadOffers();
     // Pre-load clients for the dropdown in create form
-    loadClientsForDropdown(); 
+    loadClientsForDropdown();
 });
 
