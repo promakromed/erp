@@ -21,7 +21,9 @@ app.use(cors());
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/products", require("./routes/productRoutes"));
 app.use("/api/search", require("./routes/searchRoutes")); 
-app.use("/api/clients", require("./routes/clientRoutes")); // Add the new client routes
+app.use("/api/clients", require("./routes/clientRoutes")); 
+app.use("/api/offers", require("./routes/offerRoutes")); // Add the new offer routes
+app.use("/api/pricelists", require("./routes/priceListRoutes")); // Add the new price list routes
 
 // Serve static assets (HTML, CSS, JS) from the 'public' directory
 // This middleware should handle serving index.html, clients.html, app.js, clients.js, styles.css etc.
