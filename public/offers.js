@@ -1,114 +1,138 @@
-// Global Variables
-const API_URL = "."; // Use relative path for API calls
-let currentOfferId = null; // To track which offer is being edited
+// /home/ubuntu/erp/public/offers.js
 
-// --- Authentication & Initialization ---
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("DEBUG: DOMContentLoaded event fired");
+    checkAuth();
+    setupEventListeners();
+    loadOffers();
+    populateClientDropdown(); // Populate clients when the page loads
+});
 
-// Check if user is logged in
+let currentOfferId = null; // To keep track of the offer being edited
+
 function checkAuth() {
-    console.log("DEBUG: checkAuth() called"); // Debug log
-    const userInfo = localStorage.getItem("userInfo");
-    if (!userInfo) {
-        console.log("DEBUG: No userInfo found in localStorage, redirecting to login.");
-        window.location.href = "login.html";
-        return null;
-    }
-    try {
-        const parsedInfo = JSON.parse(userInfo);
-        if (!parsedInfo || !parsedInfo.token) {
-            console.log("DEBUG: Parsed userInfo invalid or token missing, redirecting to login.");
-            localStorage.removeItem("userInfo"); // Clean up invalid item
-            window.location.href = "login.html";
-            return null;
-        }
-        console.log("DEBUG: User authenticated.");
-        // Display user name (optional)
-        const userNameSpan = document.getElementById("user-name");
-        if (userNameSpan && parsedInfo.name) {
-            userNameSpan.textContent = `Welcome, ${parsedInfo.name}`;
-        }
-        return parsedInfo; // Return user info including token
-    } catch (error) {
-        console.error("DEBUG: Error parsing userInfo from localStorage:", error);
-        localStorage.removeItem("userInfo");
-        window.location.href = "login.html";
-        return null;
+    console.log("DEBUG: checkAuth function called");
+    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+    console.log("DEBUG: localStorage content:", localStorage);
+    console.log("DEBUG: Retrieved userInfo:", userInfo);
+
+    if (!userInfo || !userInfo.token) {
+        console.error("DEBUG: Token not found in userInfo. Redirecting to login.");
+        alert("Authentication token not found. Please log in again.");
+        window.location.href = "/login.html";
+    } else {
+        console.log("DEBUG: Token found in userInfo.");
+        // Optionally set default headers for future fetch requests
+        // fetchOptions.headers["Authorization"] = `Bearer ${userInfo.token}`;
     }
 }
 
-// Logout function
-function logout() {
-    console.log("DEBUG: logout() called"); // Debug log
-    localStorage.removeItem("userInfo");
-    window.location.href = "login.html";
+function getAuthToken() {
+    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+    return userInfo ? userInfo.token : null;
 }
 
-// --- API Helper ---
-async function fetchApi(endpoint, options = {}) {
-    console.log(`DEBUG: fetchApi called for endpoint: ${endpoint}`); // Debug log
-    const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
-    const token = userInfo.token;
+function setupEventListeners() {
+    console.log("DEBUG: setupEventListeners function called");
+    const createOfferBtn = document.getElementById("create-offer-btn");
+    const saveOfferBtn = document.getElementById("save-offer-btn");
+    const cancelOfferBtn = document.getElementById("cancel-offer-btn");
+    const addItemBtn = document.getElementById("add-item-btn"); // Get the Add Item button
 
-    const defaultHeaders = {
-        "Content-Type": "application/json",
-    };
-    if (token) {
-        defaultHeaders["Authorization"] = `Bearer ${token}`;
+    if (createOfferBtn) {
+        console.log("DEBUG: Found create-offer-btn, adding event listener.");
+        createOfferBtn.addEventListener("click", () => {
+            console.log("DEBUG: Create New Offer button clicked!");
+            currentOfferId = null; // Reset current offer ID for new offer
+            showOfferForm();
+        });
+    } else {
+        console.error("DEBUG: Could not find create-offer-btn");
     }
 
-    options.headers = { ...defaultHeaders, ...options.headers };
+    if (saveOfferBtn) {
+        console.log("DEBUG: Found save-offer-btn, adding event listener.");
+        saveOfferBtn.addEventListener("click", saveOffer);
+    } else {
+        console.error("DEBUG: Could not find save-offer-btn");
+    }
+
+    if (cancelOfferBtn) {
+        console.log("DEBUG: Found cancel-offer-btn, adding event listener.");
+        cancelOfferBtn.addEventListener("click", () => {
+            console.log("DEBUG: Cancel button clicked");
+            showOfferList();
+        });
+    } else {
+        console.error("DEBUG: Could not find cancel-offer-btn");
+    }
+
+    if (addItemBtn) {
+        console.log("DEBUG: Found add-item-btn, adding event listener.");
+        addItemBtn.addEventListener("click", () => {
+            console.log("DEBUG: Add Item Manually button clicked!");
+            addLineItemRow();
+        });
+    } else {
+        console.error("DEBUG: Could not find add-item-btn");
+    }
+}
+
+async function loadOffers() {
+    console.log("DEBUG: loadOffers function called");
+    const token = getAuthToken();
+    if (!token) {
+        console.error("DEBUG: No token found in loadOffers");
+        return;
+    }
+
+    const offerListContainer = document.getElementById("offer-list-container");
+    const loadingIndicator = document.getElementById("loading-indicator");
+    const errorMessage = document.getElementById("error-message");
+
+    offerListContainer.innerHTML = ""; // Clear previous list
+    errorMessage.textContent = "";
+    loadingIndicator.style.display = "block";
 
     try {
-        const response = await fetch(`${API_URL}${endpoint}`, options);
-        console.log(`DEBUG: fetchApi response status for ${endpoint}: ${response.status}`); // Debug log
+        const response = await fetch("/api/offers", {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+
+        loadingIndicator.style.display = "none";
+
         if (!response.ok) {
-            // Try to parse error message from backend
-            let errorData;
-            try {
-                errorData = await response.json();
-            } catch (e) {
-                // If no JSON body, use status text
-                throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
-            }
+            const errorData = await response.json();
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        // Handle no content responses
-        if (response.status === 204) {
-            return null;
-        }
-        // Handle potential binary data (PDF/CSV)
-        const contentType = response.headers.get("content-type");
-        if (contentType && (contentType.includes("application/pdf") || contentType.includes("text/csv"))) {
-            console.log(`DEBUG: fetchApi returning response object for binary data (${contentType})`); // Debug log
-            return response; // Return the whole response for blob handling
-        }
-        const jsonData = await response.json();
-        console.log(`DEBUG: fetchApi successful for ${endpoint}`); // Debug log
-        return jsonData;
+
+        const offers = await response.json();
+        console.log("DEBUG: Fetched offers:", offers);
+        displayOffers(offers);
     } catch (error) {
-        console.error(`API Fetch Error for ${endpoint}:`, error); // Debug log
-        // Display error to user?
-        throw error; // Re-throw to be caught by calling function
+        console.error("Error fetching offers:", error);
+        loadingIndicator.style.display = "none";
+        errorMessage.textContent = `Error fetching offers: ${error.message}. Please try again.`;
     }
 }
 
-// --- UI Display Functions ---
-
 function displayOffers(offers) {
-    console.log("DEBUG: displayOffers() called"); // Debug log
-    const listContainer = document.getElementById("offer-list-container");
-    listContainer.innerHTML = ""; // Clear previous content
+    console.log("DEBUG: displayOffers function called");
+    const offerListContainer = document.getElementById("offer-list-container");
+    offerListContainer.innerHTML = ""; // Clear previous content
 
     if (!offers || offers.length === 0) {
-        listContainer.innerHTML =
-            `<div class="alert alert-info">No offers found.</div>`;
+        offerListContainer.innerHTML = "<p>No offers found.</p>";
         return;
     }
 
     const table = document.createElement("table");
-    table.className = "table table-hover";
+    table.className = "table table-striped table-bordered";
     table.innerHTML = `
-        <thead class="table-light">
+        <thead>
             <tr>
                 <th>Offer ID</th>
                 <th>Client</th>
@@ -119,217 +143,346 @@ function displayOffers(offers) {
             </tr>
         </thead>
         <tbody>
-            ${offers.map(offer => `
-                <tr data-offer-id="${offer._id}" class="offer-list-item">
-                    <td>${offer.offerId}</td>
-                    <td>${offer.client?.companyName || "N/A"}</td>
-                    <td>${new Date(offer.createdAt).toLocaleDateString()}</td>
-                    <td>${offer.validityDate ? new Date(offer.validityDate).toLocaleDateString() : "N/A"}</td>
-                    <td><span class="badge bg-${getOfferStatusColor(offer.status)}">${offer.status}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary view-offer-btn">View/Edit</button>
-                        <button class="btn btn-sm btn-danger delete-offer-btn" ${offer.status !== "Draft" ? "disabled" : ""}>Delete</button>
-                    </td>
-                </tr>
-            `).join("")}
         </tbody>
     `;
-    listContainer.appendChild(table);
 
-    // Add event listeners for view/delete buttons
-    listContainer.querySelectorAll(".view-offer-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            console.log("DEBUG: View/Edit button clicked"); // Debug log
-            e.stopPropagation(); // Prevent row click
-            const offerId = e.target.closest("tr").dataset.offerId;
-            viewOfferDetails(offerId);
+    const tbody = table.querySelector("tbody");
+    offers.forEach(offer => {
+        const clientName = offer.client ? offer.client.clientName : "N/A"; // Handle potential missing client data
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${offer.offerId || "N/A"}</td>
+            <td>${clientName}</td>
+            <td>${new Date(offer.offerDate).toLocaleDateString()}</td>
+            <td>${new Date(offer.validityDate).toLocaleDateString()}</td>
+            <td>${offer.status}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}">View/Edit</button>
+                <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? "disabled" : ""}>Delete</button>
+                <button class="btn btn-sm btn-secondary pdf-btn" data-id="${offer._id}">PDF</button>
+                <button class="btn btn-sm btn-secondary csv-btn" data-id="${offer._id}">CSV</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    offerListContainer.appendChild(table);
+
+    // Add event listeners for action buttons
+    offerListContainer.querySelectorAll(".view-edit-btn").forEach(button => {
+        button.addEventListener("click", (e) => {
+            const id = e.target.getAttribute("data-id");
+            console.log(`DEBUG: View/Edit button clicked for offer ID: ${id}`);
+            loadOfferForEditing(id);
         });
     });
-    listContainer.querySelectorAll(".delete-offer-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            console.log("DEBUG: Delete button clicked"); // Debug log
-            e.stopPropagation();
-            const offerId = e.target.closest("tr").dataset.offerId;
-            if (confirm("Are you sure you want to delete this draft offer?")) {
-                deleteOffer(offerId);
+
+    offerListContainer.querySelectorAll(".delete-btn").forEach(button => {
+        button.addEventListener("click", (e) => {
+            const id = e.target.getAttribute("data-id");
+            console.log(`DEBUG: Delete button clicked for offer ID: ${id}`);
+            if (confirm("Are you sure you want to delete this offer?")) {
+                deleteOffer(id);
             }
         });
     });
-}
 
-function getOfferStatusColor(status) {
-    switch (status) {
-        case "Draft": return "secondary";
-        case "Sent": return "primary";
-        case "Accepted": return "success";
-        case "Rejected": return "danger";
-        case "Expired": return "warning";
-        default: return "light";
-    }
-}
+    offerListContainer.querySelectorAll(".pdf-btn").forEach(button => {
+        button.addEventListener("click", (e) => {
+            const id = e.target.getAttribute("data-id");
+            console.log(`DEBUG: PDF button clicked for offer ID: ${id}`);
+            generateOfferOutput(id, "pdf");
+        });
+    });
 
-function populateClientDropdown(clients) {
-    console.log("DEBUG: populateClientDropdown() called"); // Debug log
-    const select = document.getElementById("offer-client-select");
-    select.innerHTML = ""; // Clear existing options
-    select.appendChild(new Option("-- Select Client --", "")); // Add default option
-    clients.forEach(client => {
-        select.appendChild(new Option(`${client.companyName} (${client.clientName})`, client._id));
+    offerListContainer.querySelectorAll(".csv-btn").forEach(button => {
+        button.addEventListener("click", (e) => {
+            const id = e.target.getAttribute("data-id");
+            console.log(`DEBUG: CSV button clicked for offer ID: ${id}`);
+            generateOfferOutput(id, "csv");
+        });
     });
 }
 
+function showOfferForm() {
+    console.log("DEBUG: showOfferForm function called");
+    document.getElementById("offer-list-section").style.display = "none";
+    document.getElementById("offer-form-section").style.display = "block";
+    document.getElementById("offer-form").reset(); // Clear form fields
+    document.getElementById("line-items-body").innerHTML = ""; // Clear line items
+    document.getElementById("offer-id-display").textContent = "New Offer"; // Reset offer ID display
+    currentOfferId = null; // Ensure we are creating a new offer
+}
+
 function showOfferList() {
-    console.log("DEBUG: showOfferList() called"); // Debug log
-    document.getElementById("offer-list-container").style.display = "block";
-    document.getElementById("offer-details-container").style.display = "none";
-    currentOfferId = null; // Reset current offer ID
-    loadOffers(); // Refresh list
+    console.log("DEBUG: showOfferList function called");
+    document.getElementById("offer-form-section").style.display = "none";
+    document.getElementById("offer-list-section").style.display = "block";
+    loadOffers(); // Refresh the list
 }
 
-function showOfferForm(title = "Create Offer", offerData = null) {
-    console.log(`DEBUG: showOfferForm() called. Title: ${title}, Offer ID: ${offerData ? offerData._id : 'New'}`); // Debug log
-    document.getElementById("offer-list-container").style.display = "none";
-    document.getElementById("offer-details-container").style.display = "block";
-    document.getElementById("offer-form-title").textContent = title;
+async function populateClientDropdown() {
+    console.log("DEBUG: populateClientDropdown function called");
+    const token = getAuthToken();
+    if (!token) return;
 
-    // Reset form
-    document.getElementById("offer-form").reset();
-    document.getElementById("offer-line-items").innerHTML = ""; // Clear line items
-    currentOfferId = offerData ? offerData._id : null;
+    const clientSelect = document.getElementById("offer-client");
+    clientSelect.innerHTML = "<option value=\"\">Select Client...</option>"; // Clear existing options
 
-    // Populate form if editing
-    if (offerData) {
-        document.getElementById("offer-client-select").value = offerData.client?._id || "";
-        document.getElementById("offer-validity-date").value = offerData.validityDate ? offerData.validityDate.split("T")[0] : "";
-        document.getElementById("offer-terms").value = offerData.terms || "";
-        // TODO: Populate line items
-        // TODO: Show/hide buttons based on status (e.g., disable save if not Draft)
-        document.getElementById("generate-pdf-btn").style.display = "inline-block";
-        document.getElementById("generate-csv-btn").style.display = "inline-block";
-    } else {
-        document.getElementById("generate-pdf-btn").style.display = "none";
-        document.getElementById("generate-csv-btn").style.display = "none";
-    }
-
-    // Fetch clients for dropdown if creating new or if needed
-    if (!offerData || !document.getElementById("offer-client-select").options.length > 1) {
-         console.log("DEBUG: Loading clients for dropdown in showOfferForm"); // Debug log
-         loadClientsForDropdown();
-    }
-}
-
-// --- Data Loading Functions ---
-
-async function loadOffers() {
-    console.log("DEBUG: loadOffers() called"); // Debug log
     try {
-        const offers = await fetchApi("/api/offers");
-        displayOffers(offers);
+        const response = await fetch("/api/clients", {
+            headers: { "Authorization": `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Failed to fetch clients");
+        const clients = await response.json();
+        clients.forEach(client => {
+            const option = document.createElement("option");
+            option.value = client._id;
+            option.textContent = `${client.clientName} (${client.companyName})`;
+            clientSelect.appendChild(option);
+        });
+        console.log("DEBUG: Client dropdown populated");
     } catch (error) {
-        console.error("Failed to load offers:", error);
-        document.getElementById("offer-list-container").innerHTML =
-            `<div class="alert alert-danger">Error loading offers: ${error.message}</div>`;
+        console.error("Error populating client dropdown:", error);
+        alert("Error loading clients for dropdown. Please try again.");
     }
 }
-
-async function loadClientsForDropdown() {
-    console.log("DEBUG: loadClientsForDropdown() called"); // Debug log
-    try {
-        const clients = await fetchApi("/api/clients");
-        populateClientDropdown(clients);
-    } catch (error) {
-        console.error("Failed to load clients for dropdown:", error);
-        // Handle error - maybe disable client selection?
-    }
-}
-
-async function viewOfferDetails(offerId) {
-    console.log(`DEBUG: viewOfferDetails() called for ID: ${offerId}`); // Debug log
-    try {
-        const offer = await fetchApi(`/api/offers/${offerId}`);
-        showOfferForm(`View/Edit Offer: ${offer.offerId}`, offer);
-    } catch (error) {
-        console.error("Failed to load offer details:", error);
-        alert(`Error loading offer: ${error.message}`);
-    }
-}
-
-// --- Action Functions ---
 
 async function saveOffer(event) {
-    console.log("DEBUG: saveOffer() called"); // Debug log
-    event.preventDefault();
+    event.preventDefault(); // Prevent default form submission
+    console.log("DEBUG: saveOffer function called");
+    const token = getAuthToken();
+    if (!token) {
+        alert("Authentication token missing. Cannot save offer. Please log in again.");
+        return;
+    }
+
     const offerData = {
-        clientId: document.getElementById("offer-client-select").value,
-        validityDate: document.getElementById("offer-validity-date").value || null,
+        client: document.getElementById("offer-client").value,
+        offerDate: new Date().toISOString(), // Or use a date picker
+        validityDate: document.getElementById("offer-validity").value,
         terms: document.getElementById("offer-terms").value,
-        // TODO: Collect line item data
-        // status: ? // Handle status updates separately?
+        status: document.getElementById("offer-status").value || "Draft",
+        pricingMethod: document.getElementById("offer-pricing-method").value,
+        marginPercent: document.getElementById("offer-margin").value || 0,
+        lineItems: [],
     };
 
-    try {
-        let savedOffer;
-        if (currentOfferId) {
-            console.log(`DEBUG: Updating offer ID: ${currentOfferId}`); // Debug log
-            savedOffer = await fetchApi(`/api/offers/${currentOfferId}`, {
-                method: "PUT",
-                body: JSON.stringify(offerData),
-            });
-            alert("Offer updated successfully!");
+    // --- Collect Line Items --- 
+    const lineItemRows = document.querySelectorAll("#line-items-body tr");
+    console.log(`DEBUG: Found ${lineItemRows.length} line item rows`);
+    lineItemRows.forEach((row, index) => {
+        const itemNumberInput = row.querySelector("input[name='itemNumber']");
+        const descriptionInput = row.querySelector("input[name='description']");
+        const quantityInput = row.querySelector("input[name='quantity']");
+        const unitPriceInput = row.querySelector("input[name='unitPrice']"); // Optional, might be calculated
+
+        // Basic validation - ensure required fields are present
+        if (itemNumberInput && quantityInput && itemNumberInput.value && quantityInput.value) {
+            const lineItem = {
+                itemNumber: itemNumberInput.value,
+                description: descriptionInput ? descriptionInput.value : '', // Handle optional description
+                quantity: parseInt(quantityInput.value, 10),
+                // unitPrice: unitPriceInput ? parseFloat(unitPriceInput.value) : undefined // Only include if provided
+            };
+            console.log(`DEBUG: Adding line item ${index}:`, lineItem);
+            offerData.lineItems.push(lineItem);
         } else {
-            console.log("DEBUG: Creating new offer"); // Debug log
-            savedOffer = await fetchApi("/api/offers", {
-                method: "POST",
-                body: JSON.stringify(offerData),
-            });
-            alert("Offer created successfully!");
-            currentOfferId = savedOffer._id; // Set current ID for potential further edits
+             console.warn(`DEBUG: Skipping incomplete line item row ${index}`);
         }
-        // Optionally refresh the form with the saved data or go back to list
-        viewOfferDetails(savedOffer._id); // Refresh form with latest data
-        // showOfferList(); // Or go back to list
-    } catch (error) {
-        console.error("Failed to save offer:", error);
-        alert(`Error saving offer: ${error.message}`);
-    }
-}
+    });
+     console.log("DEBUG: Collected line items:", offerData.lineItems);
+    // --- End Collect Line Items ---
 
-async function deleteOffer(offerId) {
-    console.log(`DEBUG: deleteOffer() called for ID: ${offerId}`); // Debug log
-    try {
-        await fetchApi(`/api/offers/${offerId}`, { method: "DELETE" });
-        alert("Offer deleted successfully.");
-        loadOffers(); // Refresh the list
-    } catch (error) {
-        console.error("Failed to delete offer:", error);
-        alert(`Error deleting offer: ${error.message}`);
+    // Basic validation
+    if (!offerData.client || !offerData.validityDate) {
+        alert("Please select a client and enter a validity date.");
+        return;
     }
-}
 
-async function generateOutput(format) {
-    console.log(`DEBUG: generateOutput() called for format: ${format}, Offer ID: ${currentOfferId}`); // Debug log
-    if (!currentOfferId) return;
-    const url = `/api/offers/${currentOfferId}/${format}`;
+    const method = currentOfferId ? "PUT" : "POST";
+    const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
+
+    console.log(`DEBUG: Saving offer. Method: ${method}, URL: ${url}, Data:`, offerData);
+
     try {
-        const response = await fetchApi(url, { headers: {} }); // Let fetchApi handle auth
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(offerData),
+        });
 
         if (!response.ok) {
-             throw new Error(`Failed to generate ${format.toUpperCase()}. Status: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
+        const savedOffer = await response.json();
+        console.log("DEBUG: Offer saved successfully:", savedOffer);
+        alert(`Offer ${currentOfferId ? 'updated' : 'created'} successfully! Offer ID: ${savedOffer.offerId}`);
+        currentOfferId = savedOffer._id; // Update current ID if creating
+        document.getElementById("offer-id-display").textContent = `Offer ID: ${savedOffer.offerId}`;
+        // Optionally reload the form with the saved data or switch to list view
+        // loadOfferForEditing(savedOffer._id); // Reload form with saved data
+        showOfferList(); // Go back to list view after saving
+
+    } catch (error) {
+        console.error("Error saving offer:", error);
+        alert(`Error saving offer: ${error.message}. Please try again.`);
+    }
+}
+
+async function loadOfferForEditing(id) {
+    console.log(`DEBUG: loadOfferForEditing called for ID: ${id}`);
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+        const response = await fetch(`/api/offers/${id}`, {
+            headers: { "Authorization": `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Failed to fetch offer details");
+        const offer = await response.json();
+        console.log("DEBUG: Fetched offer for editing:", offer);
+
+        showOfferForm(); // Switch to form view
+        currentOfferId = offer._id; // Set the current offer ID
+
+        // Populate form fields
+        document.getElementById("offer-id-display").textContent = `Offer ID: ${offer.offerId}`;
+        document.getElementById("offer-client").value = offer.client._id; // Assuming client is populated
+        document.getElementById("offer-validity").value = offer.validityDate.split('T')[0]; // Format date YYYY-MM-DD
+        document.getElementById("offer-terms").value = offer.terms || "";
+        document.getElementById("offer-status").value = offer.status;
+        document.getElementById("offer-pricing-method").value = offer.pricingMethod || "Margin";
+        document.getElementById("offer-margin").value = offer.marginPercent || "";
+
+        // Populate line items
+        const lineItemsBody = document.getElementById("line-items-body");
+        lineItemsBody.innerHTML = ""; // Clear existing items
+        if (offer.lineItems && offer.lineItems.length > 0) {
+            offer.lineItems.forEach(item => {
+                addLineItemRow(item); // Add row with existing item data
+            });
+        }
+        console.log("DEBUG: Offer form populated for editing");
+
+    } catch (error) {
+        console.error("Error loading offer for editing:", error);
+        alert("Error loading offer details. Please try again.");
+        showOfferList(); // Go back to list if loading fails
+    }
+}
+
+async function deleteOffer(id) {
+    console.log(`DEBUG: deleteOffer called for ID: ${id}`);
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+        const response = await fetch(`/api/offers/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        console.log("DEBUG: Offer deleted successfully");
+        alert("Offer deleted successfully!");
+        loadOffers(); // Refresh the list
+
+    } catch (error) {
+        console.error("Error deleting offer:", error);
+        alert(`Error deleting offer: ${error.message}. Please try again.`);
+    }
+}
+
+// --- Add Line Item Functionality ---
+function addLineItemRow(item = null) {
+    console.log("DEBUG: addLineItemRow called. Item data:", item);
+    const lineItemsBody = document.getElementById("line-items-body");
+    const newRow = document.createElement("tr");
+
+    // Populate with item data if provided (for editing), otherwise empty fields
+    const itemNumber = item ? item.itemNumber : "";
+    const description = item ? item.description : "";
+    const quantity = item ? item.quantity : 1; // Default quantity to 1 for new rows
+    // const unitPrice = item ? item.unitPrice : ""; // If tracking unit price on frontend
+
+    newRow.innerHTML = `
+        <td><input type="text" name="itemNumber" class="form-control form-control-sm" placeholder="Item No." value="${itemNumber}" required></td>
+        <td><input type="text" name="description" class="form-control form-control-sm" placeholder="Description" value="${description}"></td>
+        <td><input type="number" name="quantity" class="form-control form-control-sm" placeholder="Qty" value="${quantity}" min="1" required></td>
+        <!-- <td><input type="number" name="unitPrice" class="form-control form-control-sm" placeholder="Unit Price (USD)" value="${unitPrice}" step="0.01"></td> -->
+        <td><button type="button" class="btn btn-sm btn-danger remove-item-btn">Remove</button></td>
+    `;
+
+    lineItemsBody.appendChild(newRow);
+    console.log("DEBUG: Added new line item row to the table");
+
+    // Add event listener for the remove button on the new row
+    newRow.querySelector(".remove-item-btn").addEventListener("click", (e) => {
+        console.log("DEBUG: Remove item button clicked");
+        e.target.closest("tr").remove();
+        console.log("DEBUG: Line item row removed");
+    });
+}
+// --- End Add Line Item Functionality ---
+
+async function generateOfferOutput(id, format) {
+    console.log(`DEBUG: generateOfferOutput called for ID: ${id}, Format: ${format}`);
+    const token = getAuthToken();
+    if (!token) {
+        alert("Authentication token missing. Cannot generate output.");
+        return;
+    }
+
+    const url = `/api/offers/${id}/${format}`;
+    const loadingIndicator = document.getElementById("loading-indicator");
+    const errorMessage = document.getElementById("error-message");
+
+    loadingIndicator.style.display = "block";
+    errorMessage.textContent = "";
+
+    try {
+        const response = await fetch(url, {
+            headers: { "Authorization": `Bearer ${token}` },
+        });
+
+        loadingIndicator.style.display = "none";
+
+        if (!response.ok) {
+            // Try to parse error message from JSON, otherwise use status text
+            let errorMsg = `HTTP error! status: ${response.status} ${response.statusText}`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch (e) {
+                // Ignore if response is not JSON
+            }
+            throw new Error(errorMsg);
+        }
+
+        // Handle file download
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.style.display = "none";
         a.href = downloadUrl;
-        // Extract filename from content-disposition header if available
-        const disposition = response.headers.get("content-disposition");
-        let filename = `offer_${currentOfferId}.${format}`;
-        if (disposition && disposition.indexOf("attachment") !== -1) {
-            const filenameRegex = /filename[^;=\n]*=(([""])(?:\\.|[^\2])*?\2|[^;\n]*)/;
+        // Extract filename from content-disposition header if available, otherwise generate one
+        const disposition = response.headers.get('content-disposition');
+        let filename = `offer-${id}.${format}`;
+        if (disposition && disposition.indexOf('attachment') !== -1) {
+            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
             const matches = filenameRegex.exec(disposition);
             if (matches != null && matches[1]) {
-                filename = matches[1].replace(/[""]/g, "");
+                filename = matches[1].replace(/['"]/g, '');
             }
         }
         a.download = filename;
@@ -337,89 +490,13 @@ async function generateOutput(format) {
         a.click();
         window.URL.revokeObjectURL(downloadUrl);
         a.remove();
+        console.log(`DEBUG: ${format.toUpperCase()} file downloaded as ${filename}`);
 
     } catch (error) {
-        console.error(`Failed to generate ${format}:`, error);
-        alert(`Error generating ${format.toUpperCase()}: ${error.message}`);
+        console.error(`Error generating ${format}:`, error);
+        loadingIndicator.style.display = "none";
+        errorMessage.textContent = `Error generating ${format}: ${error.message}. Please check server logs for details.`;
+        alert(`Error generating ${format}: ${error.message}`);
     }
 }
-
-// --- Event Listeners ---
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG: DOMContentLoaded event fired"); // Debug log
-    const userInfo = checkAuth();
-    if (!userInfo) {
-        console.log("DEBUG: User not authenticated, stopping script execution."); // Debug log
-        return; // Stop if not authenticated
-    }
-
-    // Setup logout button
-    const logoutButton = document.getElementById("logout-button");
-    if (logoutButton) {
-        console.log("DEBUG: Found logout button, adding listener."); // Debug log
-        logoutButton.addEventListener("click", logout);
-    } else {
-        console.error("DEBUG: Logout button not found!"); // Debug log
-    }
-
-    // Setup navigation highlighting (simple version)
-    const navLinks = document.querySelectorAll(".navbar-nav .nav-link");
-    navLinks.forEach(link => {
-        if (link.href === window.location.href) {
-            link.classList.add("active");
-        } else {
-            link.classList.remove("active");
-        }
-    });
-
-    // Setup Offer Page specific listeners
-    const createOfferBtn = document.getElementById("create-offer-btn");
-    const cancelOfferBtn = document.getElementById("cancel-offer-btn");
-    const offerForm = document.getElementById("offer-form");
-    const generatePdfBtn = document.getElementById("generate-pdf-btn");
-    const generateCsvBtn = document.getElementById("generate-csv-btn");
-
-    if (createOfferBtn) {
-        console.log("DEBUG: Found create-offer-btn, adding listener."); // Debug log
-        createOfferBtn.addEventListener("click", () => {
-            console.log("DEBUG: Create New Offer button clicked!"); // Debug log
-            showOfferForm("Create New Offer");
-        });
-    } else {
-        console.error("DEBUG: create-offer-btn not found!"); // Debug log
-    }
-
-    if (cancelOfferBtn) {
-        console.log("DEBUG: Found cancel-offer-btn, adding listener."); // Debug log
-        cancelOfferBtn.addEventListener("click", showOfferList);
-    } else {
-        console.error("DEBUG: cancel-offer-btn not found!"); // Debug log
-    }
-
-    if (offerForm) {
-        console.log("DEBUG: Found offer-form, adding listener."); // Debug log
-        offerForm.addEventListener("submit", saveOffer);
-    } else {
-        console.error("DEBUG: offer-form not found!"); // Debug log
-    }
-
-    if (generatePdfBtn) {
-        console.log("DEBUG: Found generate-pdf-btn, adding listener."); // Debug log
-        generatePdfBtn.addEventListener("click", () => generateOutput("pdf"));
-    } else {
-        console.error("DEBUG: generate-pdf-btn not found!"); // Debug log
-    }
-
-    if (generateCsvBtn) {
-        console.log("DEBUG: Found generate-csv-btn, adding listener."); // Debug log
-        generateCsvBtn.addEventListener("click", () => generateOutput("csv"));
-    } else {
-        console.error("DEBUG: generate-csv-btn not found!"); // Debug log
-    }
-
-    // Initial load
-    console.log("DEBUG: Initializing offer page..."); // Debug log
-    loadOffers(); // Load the list of offers initially
-    loadClientsForDropdown(); // Pre-load clients for the form dropdown
-});
 
