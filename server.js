@@ -24,11 +24,17 @@ app.use(cors());
 // Routes
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/products", require("./routes/productRoutes"));
-app.use("/api/search", require("./routes/searchRoutes")); // Add this new search route
+app.use("/api/search", require("./routes/searchRoutes")); 
+app.use("/api/clients", require("./routes/clientRoutes")); // Add the new client routes
 
 // Serve static assets in production
 if (process.env.NODE_ENV === "production") {
   app.use(express.static("public"));
+  // Serve clients.html for the /clients path
+  app.get("/clients", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "public", "clients.html"));
+  });
+  // Serve index.html for other paths
   app.get("*", (req, res) => {
     res.sendFile(path.resolve(__dirname, "public", "index.html"));
   });
@@ -37,6 +43,11 @@ if (process.env.NODE_ENV === "production") {
 // Serve static assets in development (added for consistency)
 if (process.env.NODE_ENV === "development") {
   app.use(express.static("public"));
+   // Serve clients.html for the /clients path
+  app.get("/clients", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "public", "clients.html"));
+  });
+  // Serve index.html for other paths
   app.get("*", (req, res) => {
     res.sendFile(path.resolve(__dirname, "public", "index.html"));
   });
