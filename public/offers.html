@@ -3,34 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offer Management - PRO MAKROMED ERP</title> <!-- Updated Title -->
-    <!-- Link Bootstrap CSS -->
+    <title>Offer Management - PRO MAKROMED ERP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Link shared custom styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <style>
-        /* Add style for header logo */
         .header-logo {
-          height: 40px; /* Adjust height as needed */
+          height: 40px;
           margin-right: 10px;
         }
-        /* Add specific styles for offers page if needed */
         #loading-indicator {
-            display: none; /* Hidden by default */
+            display: none;
             text-align: center;
             padding: 20px;
         }
         #error-message {
             color: red;
         }
+        /* Add some spacing for line item controls */
+        .line-item-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        .line-item-controls .form-select,
+        .line-item-controls .form-control {
+            min-width: 100px; /* Adjust as needed */
+        }
+        /* Style for bulk add section */
+        #bulk-add-section {
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
     <div id="app">
-        <!-- Main App Container (assuming user is logged in) -->
         <div id="main-container">
-
-            <!-- Updated Header with Logo Start -->
+            <!-- Header -->
             <header class="bg-primary text-white pt-3 pb-2">
               <div class="container-fluid d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
@@ -56,24 +68,19 @@
                         <a class="nav-link" href="clients.html">Clients</a>
                       </li>
                       <li class="nav-item">
-                        <a class="nav-link active" href="offers.html">Offers</a> <!-- Set active state -->
+                        <a class="nav-link active" href="offers.html">Offers</a>
                       </li>
                     </ul>
                   </div>
                 </div>
               </nav>
             </header>
-            <!-- Updated Header with Logo End -->
 
-            <!-- Main Content Area -->
+            <!-- Main Content -->
             <div class="container mt-4">
-                <!-- Loading Indicator -->
                 <div id="loading-indicator">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+                    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
                 </div>
-                <!-- Error Message Area -->
                 <div id="error-message" class="alert alert-danger" style="display: none;"></div>
 
                 <!-- Offer List Section -->
@@ -85,31 +92,28 @@
                         </div>
                         <div class="card-body">
                             <div id="offer-list-container">
-                                <!-- Offer list will be populated here -->
+                                <!-- Offer list populated here -->
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Offer Form Section (initially hidden) -->
+                <!-- Offer Form Section -->
                 <div id="offer-form-section" style="display: none;">
                     <div class="card">
                         <div class="card-header bg-light">
                             <h5 id="offer-form-title">Create/Edit Offer</h5>
-                            <div id="offer-id-display" class="text-muted small"></div> <!-- Offer ID Display -->
+                            <div id="offer-id-display" class="text-muted small"></div>
                         </div>
                         <div class="card-body">
                             <form id="offer-form">
                                 <div class="row">
-                                    <!-- Client Selection -->
                                     <div class="col-md-6 mb-3">
                                         <label for="offer-client" class="form-label">Client:</label>
                                         <select id="offer-client" class="form-select" required>
                                             <option value="">-- Select Client --</option>
-                                            <!-- Clients populated by JS -->
                                         </select>
                                     </div>
-                                    <!-- Validity Date -->
                                     <div class="col-md-6 mb-3">
                                         <label for="offer-validity" class="form-label">Valid Until:</label>
                                         <input type="date" id="offer-validity" class="form-control" required>
@@ -117,7 +121,6 @@
                                 </div>
 
                                 <div class="row">
-                                    <!-- Status -->
                                     <div class="col-md-4 mb-3">
                                         <label for="offer-status" class="form-label">Status:</label>
                                         <select id="offer-status" class="form-select">
@@ -128,22 +131,15 @@
                                             <option value="Expired">Expired</option>
                                         </select>
                                     </div>
-                                    <!-- Pricing Method -->
                                     <div class="col-md-4 mb-3">
-                                        <label for="offer-pricing-method" class="form-label">Pricing Method:</label>
-                                        <select id="offer-pricing-method" class="form-select">
-                                            <option value="Margin">Margin (%)</option>
-                                            <option value="PriceList">Customer Price List</option>
-                                        </select>
+                                        <label for="offer-global-margin" class="form-label">Global Margin (%):</label>
+                                        <input type="number" id="offer-global-margin" class="form-control" min="0" step="0.01" placeholder="Default margin for items">
                                     </div>
-                                    <!-- Margin Percent -->
                                     <div class="col-md-4 mb-3">
-                                        <label for="offer-margin" class="form-label">Margin (%):</label>
-                                        <input type="number" id="offer-margin" class="form-control" min="0" step="0.01" placeholder="e.g., 15">
+                                        <!-- Placeholder -->
                                     </div>
                                 </div>
 
-                                <!-- Terms -->
                                 <div class="mb-3">
                                     <label for="offer-terms" class="form-label">Terms & Conditions:</label>
                                     <textarea id="offer-terms" class="form-control" rows="3"></textarea>
@@ -156,19 +152,78 @@
                                         <thead>
                                             <tr>
                                                 <th>Item No.</th>
+                                                <th>Manufacturer</th> <!-- Added Manufacturer Column -->
                                                 <th>Description</th>
-                                                <th>Quantity</th>
-                                                <!-- <th>Unit Price (USD)</th> -->
+                                                <th>Qty</th>
+                                                <th>Pricing</th>
+                                                <th>Unit Price</th>
+                                                <th>Line Total</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="line-items-body">
-                                            <!-- Line items will be added here by JS -->
+                                            <!-- Line items added here -->
+                                            <!-- Example Structure for DB Item (JS will create this) -->
+                                            <!--
+                                            <tr data-item-type="database" data-product-id="...">
+                                                <td><input type="text" class="form-control form-control-sm item-no" readonly></td>
+                                                <td><input type="text" class="form-control form-control-sm manufacturer" readonly></td>
+                                                <td><input type="text" class="form-control form-control-sm description" readonly></td>
+                                                <td><input type="number" class="form-control form-control-sm quantity" min="1" value="1"></td>
+                                                <td>
+                                                    <div class="line-item-controls">
+                                                        <select class="form-select form-select-sm pricing-method">
+                                                            <option value="PriceList">Price List</option>
+                                                            <option value="Margin">Margin</option>
+                                                        </select>
+                                                        <input type="number" class="form-control form-control-sm margin-percent" min="0" step="0.01" style="display: none;" placeholder="%">
+                                                    </div>
+                                                </td>
+                                                <td class="unit-price">$0.00</td>
+                                                <td class="line-total">$0.00</td>
+                                                <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
+                                            </tr>
+                                            -->
+                                            <!-- Example Structure for Manual Item (JS will create this) -->
+                                            <!--
+                                            <tr data-item-type="manual">
+                                                <td><input type="text" class="form-control form-control-sm item-no"></td>
+                                                <td>Manual</td>
+                                                <td><input type="text" class="form-control form-control-sm description"></td>
+                                                <td><input type="number" class="form-control form-control-sm quantity" min="1" value="1"></td>
+                                                <td>Manual</td>
+                                                <td class="unit-price">N/A</td>
+                                                <td class="line-total">N/A</td>
+                                                <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
+                                            </tr>
+                                            -->
                                         </tbody>
                                     </table>
                                 </div>
+
+                                <!-- NEW: Bulk Add Section -->
+                                <div id="bulk-add-section" class="mb-3">
+                                    <h6>Add Items by Manufacturer</h6>
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-4">
+                                            <label for="bulk-add-manufacturer" class="form-label">Manufacturer:</label>
+                                            <select id="bulk-add-manufacturer" class="form-select form-select-sm">
+                                                <option value="">-- Select Manufacturer --</option>
+                                                <!-- Manufacturers populated by JS -->
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="bulk-add-part-numbers" class="form-label">Part Numbers (one per line):</label>
+                                            <textarea id="bulk-add-part-numbers" class="form-control form-control-sm" rows="3" placeholder="Paste part numbers here..."></textarea>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" id="bulk-add-button" class="btn btn-success btn-sm w-100">Add Items</button>
+                                        </div>
+                                    </div>
+                                    <div id="bulk-add-status" class="mt-2 small"></div> <!-- Status messages for bulk add -->
+                                </div>
+
                                 <button type="button" id="add-item-btn" class="btn btn-secondary btn-sm mb-3">Add Item Manually</button>
-                                <!-- TODO: Add search integration button? -->
 
                                 <hr>
                                 <button type="submit" id="save-offer-btn" class="btn btn-primary">Save Offer</button>
@@ -181,20 +236,18 @@
                 </div>
             </div>
 
-            <!-- Footer Start -->
+            <!-- Footer -->
             <footer class="footer mt-auto py-3 bg-light">
               <div class="container text-center">
                 <span class="text-muted">Pro Makromed Sağlık Ürünleri | Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye | +90 216 344 91 51 | sales@promakromed.com</span>
               </div>
             </footer>
-            <!-- Footer End -->
-
         </div>
     </div>
 
-    <!-- Link Bootstrap JS -->
+    <!-- Modal removed -->
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Link the offer management script -->
     <script src="offers.js"></script>
 </body>
 </html>
