@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const axios = require("axios"); // Keep for potential future use, though rate fetching moved to Python
 const mongoose = require("mongoose"); // Needed for ObjectId check
-const { Parser } = require("@json2csv/node"); // Import @json2csv/node Parser
+const { AsyncParser } = require("@json2csv/node"); // Import @json2csv/node AsyncParser
 const { protect } = require("../middleware/authMiddleware");
 const Product = require("../models/productModel");
 const Supplier = require("../models/supplierModel");
@@ -278,8 +278,8 @@ router.post("/export", protect, async (req, res) => {
     console.log("DEBUG: CSV Fields:", fields);
 
     // --- Convert to CSV --- 
-    const json2csvParser = new Parser({ fields });
-    const csv = json2csvParser.parse(csvData);
+    const json2csvParser = new AsyncParser({ fields }); // Use AsyncParser
+    const csv = await json2csvParser.parse(csvData).promise(); // Use await and .promise()
     console.log("DEBUG: CSV generated successfully.");
 
     // --- Send CSV Response --- 
