@@ -238,8 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const clientCompany = offer.client ? offer.client.companyName : "N/A";
             const tr = document.createElement("tr");
 
-            // *** FIXED: Use formatDateEuropean for both dates ***
-            const offerDateFormatted = formatDateEuropean(offer.offerDate);
+            const offerDateFormatted = formatDateEuropean(offer.createdAt); // *** FIXED: Use createdAt ***
             const validityDateFormatted = formatDateEuropean(offer.validityDate);
 
             tr.innerHTML = `
