@@ -9,6 +9,11 @@
     <!-- Link shared custom styles -->
     <link rel="stylesheet" href="styles.css">
     <style>
+        /* Add style for header logo */
+        .header-logo {
+          height: 40px; /* Adjust height as needed */
+          margin-right: 10px;
+        }
         /* Keep specific styles minimal, rely on Bootstrap and styles.css */
         .phone-group {
             display: flex;
@@ -44,10 +49,13 @@
         <!-- Main App Container (assuming user is logged in to see this page) -->
         <div id="main-container">
 
-            <!-- Updated Header Start -->
+            <!-- Updated Header with Logo Start -->
             <header class="bg-primary text-white pt-3 pb-2">
               <div class="container-fluid d-flex justify-content-between align-items-center">
-                <h1 class="h3 mb-0">PRO MAKROMED ERP</h1>
+                <div class="d-flex align-items-center">
+                  <img src="https://promakromed.com/wp-content/uploads/2023/05/logo-promakro-sf.png" alt="PRO MAKROMED Logo" class="header-logo">
+                  <h1 class="h3 mb-0">PRO MAKROMED ERP</h1>
+                </div>
                 <div>
                   <span class="navbar-text me-3" id="user-name"></span>
                   <button class="btn btn-outline-light btn-sm" id="logout-button">Logout</button>
@@ -74,7 +82,7 @@
                 </div>
               </nav>
             </header>
-            <!-- Updated Header End -->
+            <!-- Updated Header with Logo End -->
 
             <!-- Main Content Area -->
             <div class="container mt-4">
