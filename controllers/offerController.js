@@ -6,14 +6,19 @@ const CustomerPriceList = require("../models/customerPriceListModel");
 const mongoose = require("mongoose");
 const PDFDocument = require("pdfkit");
 const { PassThrough } = require("stream");
-const axios = require("axios"); // Import axios for fetching logo
-const fs = require("fs"); // Import fs for checking font file existence
+// const axios = require("axios"); // No longer needed for logo
+const fs = require("fs"); // Import fs for checking font/logo file existence
+const path = require("path"); // Import path for constructing file paths
 
 // --- Font Paths ---
 const primaryFontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
 const boldFontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
 const fallbackFont = "Helvetica"; // Default fallback
 const fallbackBoldFont = "Helvetica-Bold";
+
+// --- Logo Path ---
+// Construct the absolute path relative to the controller file's location
+const localLogoPath = path.join(__dirname, "..", "public", "images", "logo.jpg");
 
 // --- Helper Functions --- 
 
@@ -71,17 +76,6 @@ const calculateFinalPriceUSD = async (productDetails, quantity, pricingMethod, m
 };
 
 // --- PDF Generation Helper ---
-// Fetches image data from URL
-const fetchImage = async (url) => {
-    try {
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
-        return Buffer.from(response.data, 'binary');
-    } catch (error) {
-        console.error(`Failed to fetch image from ${url}:`, error.message);
-        return null;
-    }
-};
-
 const generatePdfStream = async (offer, companyDetails) => {
     const doc = new PDFDocument({ margin: 50 });
     const stream = new PassThrough();
@@ -113,22 +107,22 @@ const generatePdfStream = async (offer, companyDetails) => {
     // Set default font
     doc.font(currentFont);
 
-    // --- Logo --- 
-    let logoData = null;
-    if (companyDetails.logoUrl) {
-        logoData = await fetchImage(companyDetails.logoUrl);
-    }
-    if (logoData) {
-        try {
-            // Embed the logo - adjust position and size as needed
-            doc.image(logoData, 50, 45, { width: 100 }); // Example position (left side)
-        } catch (imgError) {
-            console.error("Error embedding logo:", imgError.message);
+    // --- Logo (from local file) --- 
+    let logoAdded = false;
+    try {
+        if (fs.existsSync(localLogoPath)) {
+            doc.image(localLogoPath, 50, 45, { width: 100 }); // Example position (left side)
+            logoAdded = true;
+            console.log("DEBUG: Added local logo to PDF.");
+        } else {
+            console.warn(`WARN: Local logo file not found at ${localLogoPath}. Skipping logo in PDF.`);
         }
+    } catch (imgError) {
+        console.error("Error embedding local logo:", imgError.message);
     }
 
     // --- Company Details (Right Aligned) ---
-    const companyTopMargin = logoData ? 50 : 50; // Adjust top margin if logo exists
+    const companyTopMargin = logoAdded ? 50 : 50; // Adjust top margin if logo exists
     doc.font(currentFont).fontSize(14).text(companyDetails.name, { align: 'right' });
     doc.fontSize(9).text(companyDetails.address, { align: 'right' });
     doc.text(companyDetails.phone, { align: 'right' });
@@ -409,7 +403,7 @@ const generateOfferPdf = asyncHandler(async (req, res) => {
         address: "Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye",
         phone: "+90 216 344 91 51",
         email: "sales@promakromed.com",
-        logoUrl: "https://promakromed.com/wp-content/uploads/2023/05/logo-promakro-sf.png" // Replace with your actual logo URL
+        // logoUrl: "..." // No longer needed here
     };
 
     const pdfStream = await generatePdfStream(offer, companyDetails);
