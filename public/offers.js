@@ -69,6 +69,22 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Helper to format date as DD/MM/YYYY
+    function formatDateEuropean(dateString) {
+        if (!dateString) return "N/A";
+        try {
+            const date = new Date(dateString);
+            // Check if the date is valid
+            if (isNaN(date.getTime())) {
+                return "Invalid Date";
+            }
+            return date.toLocaleDateString("en-GB"); // en-GB uses DD/MM/YYYY
+        } catch (e) {
+            console.error("Error formatting date:", dateString, e);
+            return "Invalid Date";
+        }
+    }
+
     // --- Event Listener Setup ---
     function setupEventListeners() {
         console.log("DEBUG: setupEventListeners function called");
@@ -83,11 +99,10 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("DEBUG: Could not find create-offer-btn");
         }
 
-        if (saveOfferBtn) {
-            // Use submit event on the form instead of click on button
+        if (offerForm) { // Attach to form submit event
             offerForm.addEventListener("submit", saveOffer);
         } else {
-            console.error("DEBUG: Could not find save-offer-btn or offer-form");
+            console.error("DEBUG: Could not find offer-form");
         }
 
         if (cancelOfferBtn) {
@@ -206,9 +221,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <thead>
                 <tr>
                     <th>Offer ID</th>
-                    <th>Client</th>
-                    <th>Date</th>
-                    <th>Validity</th>
+                    <th>Client Company</th> <!-- Changed Header -->
+                    <th>Date (DD/MM/YYYY)</th> <!-- Changed Header -->
+                    <th>Validity (DD/MM/YYYY)</th> <!-- Changed Header -->
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -219,13 +234,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const tbody = table.querySelector("tbody");
         offers.forEach(offer => {
-            const clientName = offer.client ? offer.client.clientName : "N/A";
+            // *** FIXED: Use companyName and check if client exists ***
+            const clientCompany = offer.client ? offer.client.companyName : "N/A";
             const tr = document.createElement("tr");
+
+            // *** FIXED: Use formatDateEuropean for both dates ***
+            const offerDateFormatted = formatDateEuropean(offer.offerDate);
+            const validityDateFormatted = formatDateEuropean(offer.validityDate);
+
             tr.innerHTML = `
                 <td>${offer.offerId || "N/A"}</td>
-                <td>${clientName}</td>
-                <td>${new Date(offer.offerDate).toLocaleDateString()}</td>
-                <td>${new Date(offer.validityDate).toLocaleDateString()}</td>
+                <td>${clientCompany}</td>
+                <td>${offerDateFormatted}</td>
+                <td>${validityDateFormatted}</td>
                 <td><span class="badge bg-${getStatusColor(offer.status)}">${offer.status}</span></td>
                 <td>
                     <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}" title="View/Edit"><i class="bi bi-pencil-square"></i></button>
@@ -318,7 +339,8 @@ document.addEventListener("DOMContentLoaded", () => {
             clients.forEach(client => {
                 const option = document.createElement("option");
                 option.value = client._id;
-                option.textContent = `${client.clientName} (${client.companyName})`;
+                 // Display Company Name primarily, fallback to Client Name
+                option.textContent = `${client.companyName || client.clientName || 'Unknown Client'} (ID: ${client._id.slice(-6)})`;
                 clientSelect.appendChild(option);
             });
             console.log("DEBUG: Client dropdown populated");
