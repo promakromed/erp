@@ -97,7 +97,7 @@ async function fetchApi(endpoint, options = {}) {
 function displayOffers(offers) {
     console.log("DEBUG: displayOffers() called"); // Debug log
     const listContainer = document.getElementById("offer-list-container");
-    listContainer.innerHTML = "; // Clear previous content
+    listContainer.innerHTML = ""; // Clear previous content
 
     if (!offers || offers.length === 0) {
         listContainer.innerHTML =
