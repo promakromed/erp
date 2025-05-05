@@ -1,8 +1,10 @@
 const API_URL = 'https://proerp-b0dfb327892c.herokuapp.com/api'; // Ensure this matches your deployed backend URL
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
+    // Run checkAuth but don't block execution based on its return value for now
+    checkAuth(); 
 
+    // Proceed with setting up the page regardless of initial checkAuth outcome
     const clientForm = document.getElementById('client-form');
     const clientTableBody = document.querySelector('#client-table tbody');
     const clientFormMessage = document.getElementById('client-form-message');
@@ -36,12 +38,28 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function checkAuth() {
+    console.log("DEBUG: checkAuth() called on clients.js");
     const token = localStorage.getItem('token');
-    if (!token) {
-        console.log("No token found, redirecting to login.");
-        window.location.href = 'login.html'; // Redirect to login if not authenticated
+    console.log("DEBUG: Token retrieved from localStorage:", token); // Log the actual token value
+
+    // Log all localStorage items for comparison
+    try {
+        console.log("DEBUG: Full localStorage content:", JSON.stringify(localStorage));
+    } catch (e) {
+        console.error("DEBUG: Could not stringify localStorage", e);
     }
-    // You might want to add a check here to verify the token with the backend
+
+    if (!token) {
+        console.error("CRITICAL: No token found in localStorage! Redirect is REMOVED for debugging.");
+        // window.location.href = 'login.html'; // *** REDIRECT COMPLETELY REMOVED ***
+        // We will let the API calls fail and show errors on the page instead.
+        return false; // Indicate authentication check failed (though we don't block based on this now)
+    } else {
+        console.log("DEBUG: Token found during initial checkAuth.");
+        // Optional: Add a check here to verify the token with the backend
+        // Example: verifyTokenWithBackend(token);
+        return true; // Indicate authentication passed
+    }
 }
 
 function logout() {
@@ -55,9 +73,15 @@ function showMessage(element, message, isError = false) {
         element.className = isError ? 'message error' : 'message success';
         element.style.display = 'block';
         // Automatically hide message after 5 seconds
-        setTimeout(() => {
-            element.style.display = 'none';
-            element.textContent = '';
+        // Clear previous timeout if exists
+        if (element.timeoutId) {
+            clearTimeout(element.timeoutId);
+        }
+        element.timeoutId = setTimeout(() => {
+            if (element.style.display !== 'none') { // Check if still visible
+                 element.style.display = 'none';
+                 element.textContent = '';
+            }
         }, 5000);
     }
 }
@@ -78,6 +102,9 @@ function populateCountryCodes() {
         // Add more countries as required
     ];
 
+    // Clear existing options first
+    countryCodeSelect.innerHTML = '<option value="">Select Code</option>'; 
+
     countryCodes.forEach(country => {
         const option = document.createElement('option');
         option.value = country.code;
@@ -91,11 +118,16 @@ async function fetchAndDisplayClients() {
     const clientListMessage = document.getElementById('client-list-message');
     if (!clientTableBody || !clientListMessage) return;
 
-    clientListMessage.textContent = 'Loading clients...';
-    clientListMessage.style.display = 'block';
+    showMessage(clientListMessage, 'Loading clients...', false);
 
     try {
         const token = localStorage.getItem('token');
+        // Re-check token just before fetch
+        if (!token) {
+             console.error("Token missing before fetching clients.");
+             throw new Error("Authentication token missing. Cannot fetch clients. Please log in again.");
+        }
+        
         const response = await fetch(`${API_URL}/clients`, {
             method: 'GET',
             headers: {
@@ -104,6 +136,13 @@ async function fetchAndDisplayClients() {
             }
         });
 
+        if (response.status === 401) { // Handle unauthorized specifically
+             console.error("Unauthorized access fetching clients. Token might be invalid or expired.");
+             // Don't logout automatically here, show error message first
+             // logout(); 
+             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
+        }
+        
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
@@ -113,7 +152,7 @@ async function fetchAndDisplayClients() {
         clientTableBody.innerHTML = ''; // Clear existing rows
 
         if (clients.length === 0) {
-            clientListMessage.textContent = 'No clients found.';
+            showMessage(clientListMessage, 'No clients found.', false);
         } else {
             clients.forEach(client => {
                 const row = clientTableBody.insertRow();
@@ -131,10 +170,13 @@ async function fetchAndDisplayClients() {
                     </td>
                 `;
             });
-            clientListMessage.style.display = 'none'; // Hide loading message
+            // Hide the message area if data is successfully loaded
+            clientListMessage.style.display = 'none'; 
+            if (clientListMessage.timeoutId) clearTimeout(clientListMessage.timeoutId); // Clear timeout if message was shown
         }
     } catch (error) {
         console.error('Error fetching clients:', error);
+        // Display the error prominently on the page
         showMessage(clientListMessage, `Error fetching clients: ${error.message}`, true);
     }
 }
@@ -167,6 +209,11 @@ async function handleSaveClient(event) {
 
     try {
         const token = localStorage.getItem('token');
+         if (!token) {
+             console.error("Token missing before saving client.");
+             throw new Error("Authentication token missing. Cannot save client. Please log in again.");
+        }
+        
         const response = await fetch(url, {
             method: method,
             headers: {
@@ -175,6 +222,11 @@ async function handleSaveClient(event) {
             },
             body: JSON.stringify(clientData)
         });
+
+        if (response.status === 401) { 
+             console.error("Unauthorized access saving client. Token might be invalid or expired.");
+             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
+        }
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -211,6 +263,11 @@ async function populateFormForEdit(clientId) {
     const clientFormMessage = document.getElementById('client-form-message');
     try {
         const token = localStorage.getItem('token');
+         if (!token) {
+             console.error("Token missing before loading client for edit.");
+             throw new Error("Authentication token missing. Cannot load client for edit. Please log in again.");
+        }
+        
         const response = await fetch(`${API_URL}/clients/${clientId}`, {
             method: 'GET',
             headers: {
@@ -218,6 +275,11 @@ async function populateFormForEdit(clientId) {
                 'Content-Type': 'application/json'
             }
         });
+
+        if (response.status === 401) { 
+             console.error("Unauthorized access loading client. Token might be invalid or expired.");
+             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
+        }
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -250,6 +312,11 @@ async function handleDeleteClient(clientId) {
     const clientListMessage = document.getElementById('client-list-message');
     try {
         const token = localStorage.getItem('token');
+         if (!token) {
+             console.error("Token missing before deleting client.");
+             throw new Error("Authentication token missing. Cannot delete client. Please log in again.");
+        }
+        
         const response = await fetch(`${API_URL}/clients/${clientId}`, {
             method: 'DELETE',
             headers: {
@@ -258,12 +325,23 @@ async function handleDeleteClient(clientId) {
             }
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+       if (response.status === 401) { 
+             console.error("Unauthorized access deleting client. Token might be invalid or expired.");
+             throw new Error("Unauthorized (401). Your session may have expired. Please log out and log in again.");
         }
 
-        const result = await response.json();
+        if (!response.ok) {
+            // Handle cases where deletion fails on the server (e.g., client not found)
+            let errorMsg = `HTTP error! status: ${response.status}`;
+            try {
+                 const errorData = await response.json();
+                 errorMsg = errorData.message || errorMsg;
+            } catch(e) { /* Ignore if response is not JSON */ }
+            throw new Error(errorMsg);
+        }
+
+        // Assuming successful deletion returns the ID or a success message
+        // const result = await response.json(); 
         showMessage(clientListMessage, 'Client deleted successfully!', false);
         fetchAndDisplayClients(); // Refresh the list
 
@@ -284,6 +362,9 @@ function resetForm() {
     if (clientIdField) clientIdField.value = '';
     if (cancelEditButton) cancelEditButton.style.display = 'none';
     if (submitButton) submitButton.textContent = 'Save Client';
-    if (clientFormMessage) clientFormMessage.style.display = 'none';
+    if (clientFormMessage) {
+         clientFormMessage.style.display = 'none';
+         if (clientFormMessage.timeoutId) clearTimeout(clientFormMessage.timeoutId);
+    }
 }
 
