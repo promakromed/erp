@@ -171,7 +171,7 @@ function getOfferStatusColor(status) {
 function populateClientDropdown(clients) {
     console.log("DEBUG: populateClientDropdown() called"); // Debug log
     const select = document.getElementById("offer-client-select");
-    select.innerHTML = "; // Clear existing options
+    select.innerHTML = ""; // Clear existing options
     select.appendChild(new Option("-- Select Client --", "")); // Add default option
     clients.forEach(client => {
         select.appendChild(new Option(`${client.companyName} (${client.clientName})`, client._id));
@@ -194,7 +194,7 @@ function showOfferForm(title = "Create Offer", offerData = null) {
 
     // Reset form
     document.getElementById("offer-form").reset();
-    document.getElementById("offer-line-items").innerHTML = "; // Clear line items
+    document.getElementById("offer-line-items").innerHTML = ""; // Clear line items
     currentOfferId = offerData ? offerData._id : null;
 
     // Populate form if editing
@@ -329,7 +329,7 @@ async function generateOutput(format) {
             const filenameRegex = /filename[^;=\n]*=(([""])(?:\\.|[^\2])*?\2|[^;\n]*)/;
             const matches = filenameRegex.exec(disposition);
             if (matches != null && matches[1]) {
-                filename = matches[1].replace(/[""]/g, ");
+                filename = matches[1].replace(/[""]/g, "");
             }
         }
         a.download = filename;
@@ -410,7 +410,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("DEBUG: generate-pdf-btn not found!"); // Debug log
     }
 
-     if (generateCsvBtn) {
+    if (generateCsvBtn) {
         console.log("DEBUG: Found generate-csv-btn, adding listener."); // Debug log
         generateCsvBtn.addEventListener("click", () => generateOutput("csv"));
     } else {
@@ -418,9 +418,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Initial load
-    console.log("DEBUG: Performing initial load of offers and clients."); // Debug log
-    loadOffers();
-    // Pre-load clients for the dropdown in create form
-    loadClientsForDropdown();
+    console.log("DEBUG: Initializing offer page..."); // Debug log
+    loadOffers(); // Load the list of offers initially
+    loadClientsForDropdown(); // Pre-load clients for the form dropdown
 });
 
