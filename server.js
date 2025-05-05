@@ -11,47 +11,34 @@ dotenv.config();
 // Connect to database
 connectDB();
 
-// Disable strict population checking (for debugging the populate error)
-// mongoose.set("strictPopulate", false);
-// console.log("Mongoose strictPopulate set to false for debugging.");
-
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(cors());
 
-// Routes
+// API Routes
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/products", require("./routes/productRoutes"));
 app.use("/api/search", require("./routes/searchRoutes")); 
 app.use("/api/clients", require("./routes/clientRoutes")); // Add the new client routes
 
-// Serve static assets in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static("public"));
-  // Serve clients.html for the /clients path
-  app.get("/clients", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "public", "clients.html"));
-  });
-  // Serve index.html for other paths
-  app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "public", "index.html"));
-  });
-}
+// Serve static assets (HTML, CSS, JS) from the 'public' directory
+// This middleware should handle serving index.html, clients.html, app.js, clients.js, styles.css etc.
+app.use(express.static("public"));
 
-// Serve static assets in development (added for consistency)
-if (process.env.NODE_ENV === "development") {
-  app.use(express.static("public"));
-   // Serve clients.html for the /clients path
-  app.get("/clients", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "public", "clients.html"));
-  });
-  // Serve index.html for other paths
-  app.get("*", (req, res) => {
+// Catch-all route: If no static file or API route matches, serve index.html.
+// This is common for Single Page Applications (SPAs) to handle client-side routing.
+// Ensure this comes AFTER your API routes and static middleware.
+app.get("*", (req, res) => {
+  // Check if the request accepts HTML, otherwise it might be an API call error
+  if (req.accepts("html")) {
     res.sendFile(path.resolve(__dirname, "public", "index.html"));
-  });
-}
+  } else {
+    // Optionally handle non-HTML requests that didn't match API routes
+    res.status(404).send("API endpoint not found");
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 
