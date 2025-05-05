@@ -42,17 +42,20 @@
     <div id="main-container" style="display: none;">
       <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
-          <a class="navbar-brand" href="index.html">Product Search ERP</a> <!-- Link back to main search -->
+          <a class="navbar-brand" href="index.html">Product Search ERP</a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
               <li class="nav-item">
-                <a class="nav-link active" href="index.html">Search</a> <!-- Keep active state logic if needed -->
+                <a class="nav-link" href="index.html">Search</a> <!-- Removed active class, JS should handle this -->
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="clients.html">Clients</a> <!-- Added Clients link -->
+                <a class="nav-link" href="clients.html">Clients</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="offers.html">Offers</a> <!-- Added Offers link -->
               </li>
             </ul>
             <span class="navbar-text me-3" id="user-name"></span>
@@ -62,6 +65,7 @@
       </nav>
 
       <div class="container mt-4">
+        <!-- Page Content Start -->
         <div class="row">
           <div class="col-12">
             <div class="card">
@@ -95,11 +99,11 @@
             <div id="results-container" style="display: none;">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 id="result-count"></h5>
-                <button class="btn btn-success btn-sm" id="export-csv-btn" style="display: none;">Export to CSV</button> <!-- Added Export Button -->
+                <button class="btn btn-success btn-sm" id="export-csv-btn" style="display: none;">Export to CSV</button>
               </div>
               <div class="table-responsive">
                 <table class="table table-striped table-hover">
-                  <thead class="table-primary" id="results-head"> 
+                  <thead class="table-primary" id="results-head">
                     <!-- Headers will be dynamically generated here -->
                   </thead>
                   <tbody id="results-body"></tbody>
@@ -118,7 +122,17 @@
             <div id="error-message" class="alert alert-danger" style="display: none;"></div>
           </div>
         </div>
+        <!-- Page Content End -->
       </div>
+
+      <!-- Footer Start -->
+      <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+          <span class="text-muted">Pro Makromed Sağlık Ürünleri | Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye | +90 216 344 91 51 | sales@promakromed.com</span>
+        </div>
+      </footer>
+      <!-- Footer End -->
+
     </div>
   </div>
 
