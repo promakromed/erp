@@ -84,9 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (saveOfferBtn) {
-            saveOfferBtn.addEventListener("click", saveOffer);
+            // Use submit event on the form instead of click on button
+            offerForm.addEventListener("submit", saveOffer);
         } else {
-            console.error("DEBUG: Could not find save-offer-btn");
+            console.error("DEBUG: Could not find save-offer-btn or offer-form");
         }
 
         if (cancelOfferBtn) {
@@ -228,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td><span class="badge bg-${getStatusColor(offer.status)}">${offer.status}</span></td>
                 <td>
                     <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}" title="View/Edit"><i class="bi bi-pencil-square"></i></button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? "disabled title='Only Draft offers can be deleted'" : "title='Delete'"}><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? "disabled title=\'Only Draft offers can be deleted\'" : "title=\'Delete\'"}><i class="bi bi-trash"></i></button>
                     <button class="btn btn-sm btn-secondary pdf-btn" data-id="${offer._id}" title="Generate PDF"><i class="bi bi-file-pdf"></i></button>
                     <button class="btn btn-sm btn-success csv-btn" data-id="${offer._id}" title="Generate CSV"><i class="bi bi-file-earmark-spreadsheet"></i></button>
                 </td>
@@ -345,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const offerData = {
-            client: clientSelect.value,
+            clientId: clientSelect.value, // *** FIXED: Use clientId instead of client ***
             offerDate: new Date().toISOString(),
             validityDate: validityInput.value,
             terms: termsInput.value,
@@ -382,7 +383,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("DEBUG: Collected line items:", offerData.lineItems);
 
         // Basic validation
-        if (!offerData.client || !offerData.validityDate) {
+        if (!offerData.clientId || !offerData.validityDate) { // *** FIXED: Check clientId ***
             alert("Please select a client and enter a validity date.");
             return;
         }
@@ -407,8 +408,26 @@ document.addEventListener("DOMContentLoaded", () => {
             showLoading(false);
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                // Attempt to parse JSON error first
+                let errorMsg = `HTTP error! status: ${response.status} ${response.statusText}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.message || errorMsg;
+                } catch (jsonError) {
+                    // If not JSON, maybe it's HTML? Read as text.
+                    try {
+                        const textError = await response.text();
+                        // Basic check for HTML to provide a more helpful message
+                        if (textError.trim().startsWith("<!DOCTYPE") || textError.trim().startsWith("<html>")) {
+                            errorMsg = `Server returned an HTML error page (status: ${response.status}). Check server logs.`;
+                        } else {
+                            errorMsg = textError.substring(0, 200); // Show beginning of text error
+                        }
+                    } catch (textErrorErr) {
+                        // Fallback if reading text fails
+                    }
+                }
+                throw new Error(errorMsg);
             }
 
             const savedOffer = await response.json();
@@ -454,6 +473,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Populate form fields
             offerIdDisplay.textContent = `Offer ID: ${offer.offerId}`;
+            // Ensure client dropdown is populated before setting value
+            await populateClientDropdown(); // Wait for clients to load if needed
             clientSelect.value = offer.client._id; // Assuming client is populated
             validityInput.value = offer.validityDate.split('T')[0];
             termsInput.value = offer.terms || "";
@@ -523,7 +544,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const newRow = document.createElement("tr");
-        const itemNumber = item ? item.itemNumber : "";
+        const itemNumber = item ? item.itemNo : "";
         const description = item ? item.description : "";
         const quantity = item ? item.quantity : 1;
 
