@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // NEW Bulk Add Elements
     const bulkAddManufacturerSelect = document.getElementById("bulk-add-manufacturer");
     const bulkAddPartNumbersTextarea = document.getElementById("bulk-add-part-numbers");
-    const bulkAddBtn = document.getElementById("bulk-add-btn");
+    const bulkAddBtn = document.getElementById("bulk-add-button");
     const bulkAddError = document.getElementById("bulk-add-error");
     const bulkAddLoading = document.getElementById("bulk-add-loading");
 
