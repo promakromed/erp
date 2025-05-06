@@ -51,7 +51,7 @@ const searchProducts = asyncHandler(async (req, res) => {
 
     try {
         let findConditions = {};
-        const searchRegex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
+        const searchRegex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&"), 'i');
         findConditions.$or = [
             { itemNo: searchRegex },
             { description: searchRegex }
@@ -80,7 +80,6 @@ const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) =>
         throw new Error("Manufacturer and a non-empty array of partNumbers are required.");
     }
 
-    // Sanitize part numbers (trim whitespace)
     const sanitizedPartNumbers = partNumbers.map(pn => String(pn).trim()).filter(pn => pn);
 
     if (sanitizedPartNumbers.length === 0) {
@@ -89,20 +88,35 @@ const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) =>
     }
 
     try {
-        const products = await Product.find({
+        const foundProducts = await Product.find({
             manufacturer: manufacturer,
             itemNo: { $in: sanitizedPartNumbers }
         })
         .select("itemNo description manufacturer basePrice baseCurrency"); // Select necessary fields
 
-        // Optional: Return in the same order as input partNumbers? Requires more complex logic.
-        // For now, return as found by MongoDB.
-        res.json(products);
+        // Create a map of found products for quick lookup
+        const foundProductsMap = new Map();
+        foundProducts.forEach(product => {
+            foundProductsMap.set(product.itemNo, product);
+        });
+
+        // Construct the result array, indicating found status for each sanitized part number
+        const results = sanitizedPartNumbers.map(pn => {
+            const productData = foundProductsMap.get(pn);
+            if (productData) {
+                return { itemNumber: pn, found: true, data: productData };
+            } else {
+                return { itemNumber: pn, found: false, data: null };
+            }
+        });
+
+        res.json(results);
 
     } catch (error) {
         console.error("Bulk product lookup error:", error);
         res.status(500);
-        throw new Error("Error looking up products");
+        // Send a JSON error response instead of throwing, which might result in HTML
+        res.json({ message: "Error looking up products", error: error.message }); 
     }
 });
 
