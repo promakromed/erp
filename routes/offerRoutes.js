@@ -6,11 +6,11 @@ const {
     getOfferById,
     updateOffer,
     deleteOffer,
-    addManualOfferLineItem, // *** FIXED: Use correct controller function name ***
-    updateOfferLineItem,
-    removeOfferLineItem,
-    generateOfferPdf, // *** FIXED: Use correct controller function name (lowercase p) ***
-    generateOfferCsv // *** FIXED: Use correct controller function name (lowercase c) ***
+    // addManualOfferLineItem, // Not implemented/exported in controller
+    // updateOfferLineItem,    // Not implemented/exported in controller
+    // removeOfferLineItem,    // Not implemented/exported in controller
+    generateOfferPdf,
+    generateOfferCsv
 } = require("./../controllers/offerController"); // Adjust path as needed
 const { protect } = require("./../middleware/authMiddleware"); // Assuming auth middleware exists
 
@@ -27,17 +27,19 @@ router.route("/:id")
     .put(updateOffer)   // Update offer details (e.g., client, validity, terms, status)
     .delete(deleteOffer); // Delete an offer (likely only if in Draft status)
 
-// Offer Line Item operations
+// Offer Line Item operations (Commented out as handled within updateOffer)
+/*
 router.route("/:id/items")
-    .post(addManualOfferLineItem); // *** FIXED: Use correct controller function name ***
+    .post(addManualOfferLineItem); // Add a manual line item
 
 router.route("/:id/items/:itemId") // Assuming line items get a unique ID within the offer context
     .put(updateOfferLineItem)    // Update a line item (e.g., quantity, pricing method)
     .delete(removeOfferLineItem); // Remove a line item from an offer
+*/
 
 // Offer Output Generation
-router.route("/:id/pdf").get(generateOfferPdf); // *** FIXED: Use correct controller function name ***
-router.route("/:id/csv").get(generateOfferCsv); // *** FIXED: Use correct controller function name ***
+router.route("/:id/pdf").get(generateOfferPdf);
+router.route("/:id/csv").get(generateOfferCsv);
 
 module.exports = router;
 
