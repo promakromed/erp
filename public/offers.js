@@ -1,7 +1,7 @@
-// /home/ubuntu/erp/public/offers.js
+// /home/ubuntu/erp/public/offers.js (v5)
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG: DOMContentLoaded event fired");
+    console.log("DEBUG (v5): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -26,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const logoutButton = document.getElementById("logout-button");
     const userNameDisplay = document.getElementById("user-name");
 
-    // NEW Bulk Add Elements
     const bulkAddManufacturerSelect = document.getElementById("bulk-add-manufacturer");
     const bulkAddPartNumbersTextarea = document.getElementById("bulk-add-part-numbers");
     const bulkAddBtn = document.getElementById("bulk-add-button"); 
@@ -34,12 +33,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let currentOfferId = null;
 
-    // --- Utility Functions ---
     function checkAuth() {
-        console.log("DEBUG: checkAuth function called");
+        console.log("DEBUG (v5): checkAuth function called");
         const userInfo = JSON.parse(localStorage.getItem("userInfo"));
         if (!userInfo || !userInfo.token) {
-            console.error("DEBUG: Token not found. Redirecting to login.");
+            console.error("DEBUG (v5): Token not found. Redirecting to login.");
             alert("Authentication token not found. Please log in again.");
             window.location.href = "/login.html";
             return false;
@@ -58,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showError(message, element = errorMessage) {
-        console.log(`DEBUG: showError called with message: ${message}`);
+        console.log(`DEBUG (v5): showError called with message: ${message}`);
         if (element) {
             element.textContent = message;
             element.style.display = message ? "block" : "none";
@@ -85,17 +83,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- Event Listener Setup ---
     function setupEventListeners() {
-        console.log("DEBUG: setupEventListeners function called");
+        console.log("DEBUG (v5): setupEventListeners function called");
         if (createOfferBtn) createOfferBtn.addEventListener("click", () => { currentOfferId = null; showOfferForm(); });
         if (offerForm) offerForm.addEventListener("submit", saveOffer);
         if (cancelOfferBtn) cancelOfferBtn.addEventListener("click", showOfferList);
-        if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow(undefined, true)); // Add manual row
+        if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow(undefined, true));
         if (bulkAddBtn) {
             bulkAddBtn.addEventListener("click", handleBulkAddItems);
         } else {
-            console.log("DEBUG: Could not find bulk-add-button during setupEventListeners");
+            console.log("DEBUG (v5): Could not find bulk-add-button during setupEventListeners");
         }
         if (generatePdfBtn) generatePdfBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "pdf"); });
         if (generateCsvBtn) generateCsvBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "csv"); });
@@ -111,12 +108,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- Core Logic Functions ---
     async function loadOffers() {
-        console.log("DEBUG: loadOffers function called");
+        console.log("DEBUG (v5): loadOffers function called");
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
-        if (!offerListContainer) { console.error("DEBUG: offerListContainer not found in loadOffers"); return; }
+        if (!offerListContainer) { console.error("DEBUG (v5): offerListContainer not found in loadOffers"); return; }
         offerListContainer.innerHTML = "";
         showError("");
         showLoading(true);
@@ -138,8 +134,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function displayOffers(offers) {
-        console.log("DEBUG: displayOffers function called");
-        if (!offerListContainer) { console.error("DEBUG: offerListContainer not found in displayOffers"); return; }
+        console.log("DEBUG (v5): displayOffers function called");
+        if (!offerListContainer) { console.error("DEBUG (v5): offerListContainer not found in displayOffers"); return; }
         offerListContainer.innerHTML = "";
         if (!offers || offers.length === 0) {
             offerListContainer.innerHTML = "<p>No offers found.</p>";
@@ -199,7 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showOfferForm(offerData = null) {
-        console.log("DEBUG: showOfferForm function called. Offer data:", offerData ? JSON.stringify(offerData).substring(0, 500) + "..." : null);
+        console.log("DEBUG (v5): showOfferForm function called. Offer data:", offerData ? JSON.stringify(offerData).substring(0, 200) + "..." : null);
         if (offerListSection) offerListSection.style.display = "none";
         if (offerFormSection) offerFormSection.style.display = "block";
         if (offerForm) offerForm.reset();
@@ -220,22 +216,22 @@ document.addEventListener("DOMContentLoaded", () => {
         showError("");
 
         if (offerData && offerData.lineItems) {
-            console.log("DEBUG: Populating existing line items for offer:", offerData.lineItems);
-            offerData.lineItems.forEach(item => addLineItemRow(item, false)); // false for not manual
+            console.log("DEBUG (v5): Populating existing line items for offer:", offerData.lineItems);
+            offerData.lineItems.forEach(item => addLineItemRow(item, item.isManual === undefined ? false : item.isManual)); // Pass isManual flag
         }
     }
 
     function showOfferList() {
-        console.log("DEBUG: showOfferList function called");
+        console.log("DEBUG (v5): showOfferList function called");
         if (offerListSection) offerListSection.style.display = "block";
         if (offerFormSection) offerFormSection.style.display = "none";
         loadOffers();
     }
 
     async function populateClientDropdown(selectedClientRef = null) {
-        console.log("DEBUG: populateClientDropdown called with selectedClientRef:", selectedClientRef);
+        console.log("DEBUG (v5): populateClientDropdown called with selectedClientRef:", selectedClientRef);
         const token = getAuthToken();
-        if (!token || !clientSelect) { console.error("DEBUG: Token or clientSelect not found in populateClientDropdown"); return; }
+        if (!token || !clientSelect) { console.error("DEBUG (v5): Token or clientSelect not found"); return; }
         clientSelect.innerHTML = "<option value=\"\">Select Client...</option>"; 
         try {
             const response = await fetch("/api/clients", { headers: { "Authorization": `Bearer ${token}` } });
@@ -244,7 +240,9 @@ document.addEventListener("DOMContentLoaded", () => {
             clients.forEach(client => {
                 const option = document.createElement("option");
                 option.value = client._id;
-                option.textContent = `${client.companyName} (${client.contactName || client.contactPersonName || client.clientNumber || 'N/A'})`;
+                // Attempt to display CompanyName (ContactPersonName or ClientNumber or N/A)
+                const contactInfo = client.contactPersonName || client.contactName || client.clientNumber || "N/A";
+                option.textContent = `${client.companyName} (${contactInfo})`;
                 const selectedClientId = selectedClientRef ? (selectedClientRef._id || selectedClientRef) : null;
                 if (selectedClientId && client._id === selectedClientId) {
                     option.selected = true;
@@ -258,9 +256,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function populateManufacturerDropdown() {
-        console.log("DEBUG: populateManufacturerDropdown function called");
+        console.log("DEBUG (v5): populateManufacturerDropdown function called");
         const token = getAuthToken();
-        if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG: Token or bulkAddManufacturerSelect not found"); return; }
+        if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG (v5): Token or bulkAddManufacturerSelect not found"); return; }
         bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
         try {
             const response = await fetch("/api/products/manufacturers", { headers: { "Authorization": `Bearer ${token}` } });
@@ -278,82 +276,92 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // addLineItemRow (v5 - Corrected ItemNo population)
     function addLineItemRow(itemData, isManual = true) {
-        console.log(`DEBUG: addLineItemRow (v4) called. Is manual: ${isManual}. Item data:`, JSON.stringify(itemData));
+        console.log(`DEBUG (v5): addLineItemRow called. Is manual: ${isManual}. Item data:`, itemData ? JSON.stringify(itemData).substring(0,200) + "..." : "undefined");
         if (!lineItemsBody) {
-            console.error("CRITICAL: lineItemsBody not found in addLineItemRow. Cannot add row.");
+            console.error("CRITICAL (v5): lineItemsBody not found. Cannot add row.");
             return;
         }
 
         const row = lineItemsBody.insertRow();
         const currentItemData = itemData || {};
         
-        let productSource = {};
+        let productSource = {}; // This will hold the product details for non-manual items
         if (!isManual) {
+            // If itemData.product is an object (like from bulk add), use it directly.
+            // If itemData itself is the product (like from loading an existing offer), use itemData.
             if (currentItemData.product && typeof currentItemData.product === 'object') {
                 productSource = currentItemData.product;
             } else {
-                productSource = currentItemData; 
+                productSource = currentItemData; // This assumes itemData contains product fields directly
             }
         }
-        console.log(`DEBUG (v4): Product source for row:`, JSON.stringify(productSource));
+        console.log(`DEBUG (v5): Product source for row:`, productSource ? JSON.stringify(productSource).substring(0,200) + "..." : "{}");
 
         row.dataset.itemId = !isManual && productSource && productSource._id ? productSource._id : (currentItemData._id || `manual_${Date.now()}`);
         row.dataset.isManual = String(isManual);
 
+        // Initialize values
         let itemNoVal = "", manufVal = "", descVal = "", qtyVal = 1;
         let unitPriceDisplay = "TBD", pricingMethodVal = "Margin", marginPercentVal = "";
         let lineTotalDisplay = "TBD";
         let inputsReadOnly = !isManual;
         let pricingControlsDisabled = isManual;
-        let marginInputInitiallyHidden = true; 
 
         if (isManual) {
-            pricingMethodVal = "Margin"; 
+            console.log("DEBUG (v5): Manual item row setup.");
+            pricingMethodVal = "Margin";
             marginPercentVal = "";
         } else {
-            itemNoVal = productSource.itemNumber || "N/A";
+            console.log("DEBUG (v5): Non-manual item row setup.");
+            itemNoVal = productSource.itemNumber || productSource.itemNo || "N/A"; // CRITICAL FIX: Ensure itemNoVal is populated
             manufVal = productSource.manufacturer || "N/A";
             descVal = productSource.description || "N/A";
             qtyVal = currentItemData.quantity !== undefined ? currentItemData.quantity : 1;
-            unitPriceDisplay = currentItemData.unitPriceUSD !== undefined ? parseFloat(currentItemData.unitPriceUSD).toFixed(2) : 'TBD';
+            unitPriceDisplay = currentItemData.finalPriceUSD !== undefined ? parseFloat(currentItemData.finalPriceUSD).toFixed(2) : (currentItemData.unitPriceUSD !== undefined ? parseFloat(currentItemData.unitPriceUSD).toFixed(2) : 'TBD');
             pricingMethodVal = currentItemData.pricingMethod || "Margin";
             
             if (pricingMethodVal === 'PriceList') {
                 marginPercentVal = ""; 
-                marginInputInitiallyHidden = true;
             } else { 
                 marginPercentVal = currentItemData.marginPercent !== undefined && currentItemData.marginPercent !== null 
                                    ? currentItemData.marginPercent 
                                    : (globalMarginInput ? globalMarginInput.value : "");
-                marginInputInitiallyHidden = false; 
             }
             lineTotalDisplay = currentItemData.lineTotalUSD !== undefined ? parseFloat(currentItemData.lineTotalUSD).toFixed(2) : 'TBD';
         }
 
+        console.log(`DEBUG (v5): Final values for row - ItemNo: ${itemNoVal}, Manuf: ${manufVal}, Desc: ${descVal}, Qty: ${qtyVal}, UnitPrice: ${unitPriceDisplay}, PricingMethod: ${pricingMethodVal}, Margin%: ${marginPercentVal}, LineTotal: ${lineTotalDisplay}`);
+
+        // 1. Item No.
         let cell1 = row.insertCell();
         let input1 = document.createElement("input");
         input1.type = "text"; input1.className = "form-control form-control-sm item-number"; input1.value = itemNoVal;
         if (inputsReadOnly) input1.readOnly = true;
         input1.placeholder = "Item No."; cell1.appendChild(input1);
 
+        // 2. Manufacturer
         let cell2 = row.insertCell();
         let input2 = document.createElement("input");
         input2.type = "text"; input2.className = "form-control form-control-sm manufacturer"; input2.value = manufVal;
         if (inputsReadOnly) input2.readOnly = true;
         input2.placeholder = "Manuf."; cell2.appendChild(input2);
 
+        // 3. Description
         let cell3 = row.insertCell();
         let input3 = document.createElement("input");
         input3.type = "text"; input3.className = "form-control form-control-sm description"; input3.value = descVal;
         if (inputsReadOnly) input3.readOnly = true;
         input3.placeholder = "Description"; cell3.appendChild(input3);
 
+        // 4. Qty
         let cell4 = row.insertCell();
         let input4 = document.createElement("input");
         input4.type = "number"; input4.className = "form-control form-control-sm quantity"; input4.value = qtyVal;
         input4.min = "1"; input4.placeholder = "Qty"; cell4.appendChild(input4);
 
+        // 5. Pricing (Combined Cell for Method and Margin)
         let cell5_pricing = row.insertCell();
         const pricingControlsDiv = document.createElement("div");
         pricingControlsDiv.className = "line-item-controls";
@@ -361,14 +369,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const pricingMethodSelect = document.createElement("select");
         pricingMethodSelect.className = "form-select form-select-sm pricing-method";
         if (pricingControlsDisabled) pricingMethodSelect.disabled = true;
-        let optionMethodMargin = document.createElement("option");
-        optionMethodMargin.value = "Margin"; optionMethodMargin.textContent = "Margin";
-        if (pricingMethodVal === "Margin") optionMethodMargin.selected = true;
-        pricingMethodSelect.appendChild(optionMethodMargin);
-        let optionMethodPriceList = document.createElement("option");
-        optionMethodPriceList.value = "PriceList"; optionMethodPriceList.textContent = "Price List";
-        if (pricingMethodVal === "PriceList") optionMethodPriceList.selected = true;
-        pricingMethodSelect.appendChild(optionMethodPriceList);
+        ["Margin", "PriceList"].forEach(method => {
+            let option = document.createElement("option");
+            option.value = method; option.textContent = method === "PriceList" ? "Price List" : method;
+            if (pricingMethodVal === method) option.selected = true;
+            pricingMethodSelect.appendChild(option);
+        });
         pricingControlsDiv.appendChild(pricingMethodSelect);
 
         const marginPercentInput = document.createElement("input");
@@ -376,37 +382,30 @@ document.addEventListener("DOMContentLoaded", () => {
         marginPercentInput.value = marginPercentVal;
         marginPercentInput.min = "0"; marginPercentInput.step = "0.01";
         marginPercentInput.placeholder = "%";
-        if (pricingControlsDisabled || pricingMethodVal === 'PriceList') {
-            marginPercentInput.disabled = true;
-        }
-        if (marginInputInitiallyHidden && pricingMethodVal !== 'Margin') {
-             marginPercentInput.style.display = 'none';
-        }
         pricingControlsDiv.appendChild(marginPercentInput);
         cell5_pricing.appendChild(pricingControlsDiv);
         
-        pricingMethodSelect.addEventListener('change', function() {
-            const currentMarginInput = this.closest('.line-item-controls').querySelector('.margin-percent');
-            if (currentMarginInput) {
-                const isPriceList = this.value === 'PriceList';
-                currentMarginInput.disabled = isPriceList;
-                currentMarginInput.style.display = isPriceList ? 'none' : 'inline-block';
-                if (isPriceList) currentMarginInput.value = '';
-            }
-        });
-        if (!isManual || !pricingControlsDisabled) {
-            const event = new Event('change');
-            pricingMethodSelect.dispatchEvent(event);
-        }
+        const updateMarginInputState = () => {
+            const isPriceList = pricingMethodSelect.value === 'PriceList';
+            marginPercentInput.disabled = pricingControlsDisabled || isPriceList;
+            marginPercentInput.style.display = (pricingControlsDisabled || isPriceList) ? 'none' : 'inline-block';
+            if (isPriceList) marginPercentInput.value = '';
+        };
 
+        pricingMethodSelect.addEventListener('change', updateMarginInputState);
+        updateMarginInputState(); // Set initial state
+
+        // 6. Unit Price (USD) - Display only
         let cell6_unitPrice = row.insertCell();
         cell6_unitPrice.className = "unit-price";
         cell6_unitPrice.textContent = unitPriceDisplay;
 
+        // 7. Line Total (USD) - Display only
         let cell7_lineTotal = row.insertCell();
         cell7_lineTotal.className = "line-total";
         cell7_lineTotal.textContent = lineTotalDisplay;
 
+        // 8. Actions
         let cell8_action = row.insertCell();
         const removeButton = document.createElement("button");
         removeButton.type = "button"; removeButton.className = "btn btn-danger btn-sm remove-item-btn";
@@ -415,15 +414,15 @@ document.addEventListener("DOMContentLoaded", () => {
         removeButton.appendChild(iconRemove);
         cell8_action.appendChild(removeButton);
         
-        console.log("DEBUG (v4): addLineItemRow finished successfully for row with itemNo:", itemNoVal);
+        console.log(`DEBUG (v5): addLineItemRow finished for itemNo: ${itemNoVal}`);
     }
 
     async function handleBulkAddItems() {
-        console.log("DEBUG: handleBulkAddItems function called");
+        console.log("DEBUG (v5): handleBulkAddItems function called");
         const token = getAuthToken();
         if (!token) { showError("Authentication error."); return; }
         if (!bulkAddManufacturerSelect || !bulkAddPartNumbersTextarea) { 
-            console.error("DEBUG: Manufacturer select or part numbers textarea not found."); 
+            console.error("DEBUG (v5): Manufacturer select or part numbers textarea not found."); 
             showBulkAddStatus("Error: UI elements for bulk add not found.", true);
             return; 
         }
@@ -462,7 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
             const productsFound = await response.json();
-            console.log("DEBUG: Products found from bulk lookup:", productsFound);
+            console.log("DEBUG (v5): Products found from bulk lookup:", productsFound);
 
             if (productsFound.length === 0) {
                 showBulkAddStatus("No products found for the given manufacturer and part numbers.", true);
@@ -470,6 +469,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             productsFound.forEach(product => {
+                // Pass the product directly, quantity, and pricing method. isManual is false.
                 addLineItemRow({ product: product, quantity: 1, pricingMethod: 'Margin' }, false); 
             });
             showBulkAddStatus(`${productsFound.length} product(s) added.`, false);
@@ -482,9 +482,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // saveOffer (v5 - Corrected itemNumber collection)
     async function saveOffer(event) {
         event.preventDefault();
-        console.log("DEBUG: saveOffer function called");
+        console.log("DEBUG (v5): saveOffer function called");
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
 
@@ -510,7 +511,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const rows = lineItemsBody.querySelectorAll("tr");
             if (rows.length === 0) {
                 showError("Please add at least one line item to the offer.");
-                return; // Stop save if no line items
+                return;
             }
 
             rows.forEach(row => {
@@ -525,22 +526,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 const isManualItem = row.dataset.isManual === "true";
     
                 const lineItem = {
-                    itemNumber: itemNumberInput ? itemNumberInput.value.trim() : "",
+                    itemNumber: itemNumberInput ? itemNumberInput.value.trim() : "", // CRITICAL: Read from input
                     description: descriptionInput ? descriptionInput.value.trim() : "",
                     manufacturer: manufacturerInput ? manufacturerInput.value.trim() : "",
-                    quantity: quantityInput && quantityInput.value.trim() !== "" ? parseInt(quantityInput.value) : 0, // Ensure quantity is a number
+                    quantity: quantityInput && quantityInput.value.trim() !== "" ? parseInt(quantityInput.value) : 0,
                     isManual: isManualItem,
                     product: isManualItem ? null : row.dataset.itemId 
                 };
 
-                // Validate essential text fields and quantity
-                if (!lineItem.itemNumber || !lineItem.description || !lineItem.manufacturer) {
-                    showError("All line items must have Item No., Description, and Manufacturer filled in.");
+                if (!lineItem.itemNumber || lineItem.itemNumber === "N/A" || !lineItem.description || !lineItem.manufacturer) {
+                    showError("All line items must have valid Item No., Description, and Manufacturer.");
                     throw new Error("Incomplete line item data: Missing item details.");
                 }
                 if (lineItem.quantity < 1) {
                     showError("Line item quantity must be at least 1.");
-                    throw new Error("Invalid line item quantity: Must be 1 or more.");
+                    throw new Error("Invalid line item quantity.");
                 }
     
                 if (isManualItem) {
@@ -559,18 +559,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
                 
-                console.log("DEBUG: Collected line item for save:", JSON.stringify(lineItem));
+                console.log("DEBUG (v5): Collected line item for save:", JSON.stringify(lineItem));
                 offerData.lineItems.push(lineItem);
             });
 
         } catch (lineItemError) {
-            console.error("Error processing line items for save:", lineItemError.message);
+            console.error("Error processing line items for save (v5):", lineItemError.message);
             showLoading(false);
-            // showError is called inside the loop for specific errors
             return; 
         }
         
-        console.log("DEBUG: Offer data to save:", JSON.stringify(offerData));
+        console.log("DEBUG (v5): Offer data to save:", JSON.stringify(offerData));
 
         showLoading(true);
         showError("");
@@ -588,26 +587,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 let errorData = { message: `Server error: ${response.status}` };
                 try { 
                     const text = await response.text();
-                    console.log("DEBUG: Save error response text:", text);
+                    console.log("DEBUG (v5): Save error response text:", text);
                     errorData = JSON.parse(text); 
                 } catch (e) { 
-                    console.warn("Could not parse error JSON from save offer:", e);
+                    console.warn("Could not parse error JSON from save offer (v5):", e);
                 }
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
             const savedOffer = await response.json();
-            console.log("DEBUG: Offer saved successfully:", savedOffer);
+            console.log("DEBUG (v5): Offer saved successfully:", savedOffer);
             showOfferList();
             alert("Offer saved successfully!");
         } catch (error) {
-            console.error("Error saving offer:", error);
+            console.error("Error saving offer (v5):", error);
             showLoading(false);
             showError(`Error saving offer: ${error.message}. Please try again.`);
         }
     }
 
     async function loadOfferForEditing(id) {
-        console.log("DEBUG: loadOfferForEditing function called with ID:", id);
+        console.log("DEBUG (v5): loadOfferForEditing function called with ID:", id);
         const token = getAuthToken();
         if (!token) { showError("Authentication error."); return; }
         showLoading(true);
@@ -616,7 +615,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showLoading(false);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const offer = await response.json();
-            console.log("DEBUG: Offer loaded for editing:", offer);
+            console.log("DEBUG (v5): Offer loaded for editing:", offer);
             showOfferForm(offer);
         } catch (error) {
             console.error("Error loading offer for editing:", error);
@@ -626,7 +625,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function deleteOffer(id) {
-        console.log("DEBUG: deleteOffer function called with ID:", id);
+        console.log("DEBUG (v5): deleteOffer function called with ID:", id);
         const token = getAuthToken();
         if (!token) { showError("Authentication error."); return; }
         showLoading(true);
@@ -644,7 +643,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function generateOfferOutput(offerId, format) {
-        console.log(`DEBUG: generateOfferOutput called for offer ID ${offerId}, format ${format}`);
+        console.log(`DEBUG (v5): generateOfferOutput called for offer ID ${offerId}, format ${format}`);
         const token = getAuthToken();
         if (!token) { showError("Authentication error."); return; }
         showLoading(true);
@@ -675,14 +674,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (checkAuth()) {
         if (offerListSection && offerFormSection) {
-             console.log("DEBUG: Offers page detected, initializing.");
+             console.log("DEBUG (v5): Offers page detected, initializing.");
             setupEventListeners();
             showOfferList(); 
         } else {
-            console.log("DEBUG: Not on offers page, or core elements missing.");
+            console.log("DEBUG (v5): Not on offers page, or core elements missing.");
         }
     } else {
-        console.log("DEBUG: Auth check failed, not initializing offer page logic.");
+        console.log("DEBUG (v5): Auth check failed, not initializing offer page logic.");
     }
 });
 
