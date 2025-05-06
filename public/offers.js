@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (createOfferBtn) createOfferBtn.addEventListener("click", () => { currentOfferId = null; showOfferForm(); });
         if (offerForm) offerForm.addEventListener("submit", saveOffer);
         if (cancelOfferBtn) cancelOfferBtn.addEventListener("click", showOfferList);
-        if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow()); // Add manual row
+        if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow(undefined, true)); // Add manual row
         if (bulkAddBtn) {
             bulkAddBtn.addEventListener("click", handleBulkAddItems);
         } else {
@@ -216,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lineItemsBody) lineItemsBody.innerHTML = "";
         
         currentOfferId = offerData ? offerData._id : null;
-        if (offerIdDisplay) offerIdDisplay.textContent = currentOfferId ? `Editing Offer ID: ${offerData.offerId}` : "Creating New Offer";
+        if (offerIdDisplay) offerIdDisplay.textContent = currentOfferId ? `Editing Offer ID: ${offerData.offerId || "N/A"}` : "Creating New Offer";
         if (validityInput && offerData) validityInput.value = offerData.validityDate ? offerData.validityDate.split("T")[0] : "";
         if (termsInput && offerData) termsInput.value = offerData.terms || "";
         if (statusSelect && offerData) statusSelect.value = offerData.status || "Draft";
@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const option = document.createElement("option");
                 option.value = client._id;
                 option.textContent = `${client.companyName} (${client.contactName || 'N/A'})`;
-                if (selectedClientId && (client._id === selectedClientId || client._id === selectedClientId._id)) {
+                if (selectedClientId && (client._id === selectedClientId || (selectedClientId._id && client._id === selectedClientId._id) )) {
                     option.selected = true;
                 }
                 clientSelect.appendChild(option);
@@ -271,13 +271,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG: Token or bulkAddManufacturerSelect not found"); return; }
         bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
         try {
-            // Assuming an endpoint /api/products/manufacturers exists and returns a list of unique manufacturer names
             const response = await fetch("/api/products/manufacturers", { headers: { "Authorization": `Bearer ${token}` } });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const manufacturers = await response.json();
             manufacturers.forEach(manufacturer => {
                 const option = document.createElement("option");
-                option.value = manufacturer; // Assuming manufacturer is a string
+                option.value = manufacturer; 
                 option.textContent = manufacturer;
                 bulkAddManufacturerSelect.appendChild(option);
             });
@@ -287,38 +286,64 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function addLineItemRow(itemData = {}, isManual = true) {
+    function addLineItemRow(itemData, isManual = true) {
         console.log("DEBUG: addLineItemRow called. Item data:", itemData, "Is manual:", isManual);
         if (!lineItemsBody) { console.error("DEBUG: lineItemsBody not found in addLineItemRow"); return; }
 
         const row = lineItemsBody.insertRow();
-        row.dataset.itemId = itemData.product ? itemData.product._id : (itemData._id || `manual_${Date.now()}`);
-        row.dataset.isManual = isManual;
+        // Ensure itemData is an object, even if undefined is passed for manual add
+        const currentItemData = itemData || {}; 
+        const productDetails = currentItemData.product || currentItemData; // For bulk add, product is in currentItemData.product. For existing items, fields are directly on currentItemData or currentItemData.product
 
-        // Columns: Item No, Manufacturer, Description, Qty, Unit Price (USD), Pricing Method, Margin %, Line Total (USD), Actions
-        const itemNo = isManual ? "" : (itemData.product ? itemData.product.itemNumber : (itemData.itemNumber || ""));
-        // CORRECTED MAPPING HERE:
-        const manufacturer = isManual ? "N/A" : (itemData.product ? itemData.product.manufacturer : (itemData.manufacturer || "N/A"));
-        const description = isManual ? "" : (itemData.product ? itemData.product.description : (itemData.description || ""));
+        row.dataset.itemId = !isManual && productDetails._id ? productDetails._id : (currentItemData._id || `manual_${Date.now()}`);
+        row.dataset.isManual = String(isManual);
+
+        let itemNo, manufacturer, description, quantity, unitPriceUSD, pricingMethod, marginPercent, lineTotalUSD;
+
+        if (isManual) {
+            itemNo = "";
+            manufacturer = ""; // Manual items can have manufacturer typed in
+            description = "";
+            quantity = 1;
+            unitPriceUSD = "TBD";
+            pricingMethod = "Margin"; // Default for UI consistency, but will be disabled by logic below
+            marginPercent = "";
+            lineTotalUSD = "TBD";
+        } else {
+            itemNo = productDetails.itemNumber || "";
+            manufacturer = productDetails.manufacturer || "";
+            description = productDetails.description || "";
+            quantity = currentItemData.quantity || 1;
+            unitPriceUSD = currentItemData.unitPriceUSD ? parseFloat(currentItemData.unitPriceUSD).toFixed(2) : 'TBD';
+            pricingMethod = currentItemData.pricingMethod || "Margin";
+            marginPercent = currentItemData.marginPercent || (currentItemData.pricingMethod === "PriceList" ? "" : (globalMarginInput ? globalMarginInput.value : ""));
+            lineTotalUSD = currentItemData.lineTotalUSD ? parseFloat(currentItemData.lineTotalUSD).toFixed(2) : 'TBD';
+        }
         
-        console.log(`DEBUG: Item No: ${itemNo}, Manufacturer: ${manufacturer}, Description: ${description}`);
+        console.log(`DEBUG: Populating row - Item No: ${itemNo}, Manuf: ${manufacturer}, Desc: ${description}, Qty: ${quantity}, Price: ${unitPriceUSD}, Method: ${pricingMethod}, Margin: ${marginPercent}`);
 
+        // Ensure correct order and elements as per the 9-column HTML structure
         row.innerHTML = `
             <td><input type="text" class="form-control item-number" value="${itemNo}" ${!isManual ? 'readonly' : ''} placeholder="Item No."></td>
             <td><input type="text" class="form-control manufacturer" value="${manufacturer}" ${!isManual ? 'readonly' : ''} placeholder="Manuf."></td>
             <td><input type="text" class="form-control description" value="${description}" ${!isManual ? 'readonly' : ''} placeholder="Description"></td>
-            <td><input type="number" class="form-control quantity" value="${itemData.quantity || 1}" min="1" placeholder="Qty"></td>
-            <td class="unit-price">${itemData.unitPriceUSD ? parseFloat(itemData.unitPriceUSD).toFixed(2) : 'TBD'}</td>
+            <td><input type="number" class="form-control quantity" value="${quantity}" min="1" placeholder="Qty"></td>
+            <td class="unit-price">${unitPriceUSD}</td>
             <td>
                 <select class="form-select pricing-method" ${isManual ? 'disabled' : ''}>
-                    <option value="Margin" ${itemData.pricingMethod === 'Margin' ? 'selected' : ''}>Margin</option>
-                    <option value="PriceList" ${itemData.pricingMethod === 'PriceList' ? 'selected' : ''}>Price List</option>
+                    <option value="Margin" ${pricingMethod === 'Margin' ? 'selected' : ''}>Margin</option>
+                    <option value="PriceList" ${pricingMethod === 'PriceList' ? 'selected' : ''}>Price List</option>
                 </select>
             </td>
-            <td><input type="number" class="form-control margin-percent" value="${itemData.marginPercent || ''}" placeholder="%" ${isManual || itemData.pricingMethod === 'PriceList' ? 'disabled' : ''}></td>
-            <td class="line-total">${itemData.lineTotalUSD ? parseFloat(itemData.lineTotalUSD).toFixed(2) : 'TBD'}</td>
+            <td><input type="number" class="form-control margin-percent" value="${marginPercent}" placeholder="%" ${(isManual || pricingMethod === 'PriceList') ? 'disabled' : ''}></td>
+            <td class="line-total">${lineTotalUSD}</td>
             <td><button type="button" class="btn btn-sm btn-danger remove-item-btn"><i class="fas fa-times"></i></button></td>
         `;
+        // Re-apply disabled state for margin if needed after innerHTML overwrite
+        if (!isManual && pricingMethod === 'PriceList') {
+            const marginInputInRow = row.querySelector('.margin-percent');
+            if (marginInputInRow) marginInputInRow.disabled = true;
+        }
     }
 
     async function handleBulkAddItems() {
@@ -331,10 +356,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return; 
         }
 
-        const manufacturer = bulkAddManufacturerSelect.value;
+        const manufacturerValue = bulkAddManufacturerSelect.value; // Use a different variable name to avoid conflict
         const partNumbersRaw = bulkAddPartNumbersTextarea.value;
 
-        if (!manufacturer) {
+        if (!manufacturerValue) {
             showBulkAddStatus("Please select a manufacturer.", true);
             return;
         }
@@ -356,11 +381,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch("/api/products/bulk-lookup", {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ manufacturer, partNumbers })
+                body: JSON.stringify({ manufacturer: manufacturerValue, partNumbers })
             });
             showLoading(false);
             if (!response.ok) {
-                const errorData = await response.json();
+                let errorData = { message: `Server error: ${response.status}` };
+                try { errorData = await response.json(); } catch(e){ console.warn("Could not parse error from bulk-lookup");}
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
             const productsFound = await response.json();
@@ -372,9 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             productsFound.forEach(product => {
-                // We pass the whole product object as itemData.product for consistency with how existing items are loaded.
-                // The addLineItemRow function will then extract itemNumber, description, manufacturer from product.
-                // Ensure the product object from backend has 'itemNumber', 'description', 'manufacturer' fields.
+                // Pass product data directly to addLineItemRow, it expects itemData.product for non-manual items
                 addLineItemRow({ product: product, quantity: 1, pricingMethod: 'Margin' }, false); 
             });
             showBulkAddStatus(`${productsFound.length} product(s) added.`, false);
@@ -411,7 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rows.forEach(row => {
             const itemNumberInput = row.querySelector(".item-number");
             const descriptionInput = row.querySelector(".description");
-            const manufacturerInput = row.querySelector(".manufacturer"); // Added for data collection
+            const manufacturerInput = row.querySelector(".manufacturer");
             const quantityInput = row.querySelector(".quantity");
             const pricingMethodSelect = row.querySelector(".pricing-method");
             const marginPercentInput = row.querySelector(".margin-percent");
@@ -419,19 +443,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const lineItem = {
                 itemNumber: itemNumberInput ? itemNumberInput.value : "",
                 description: descriptionInput ? descriptionInput.value : "",
-                manufacturer: manufacturerInput ? manufacturerInput.value : "N/A", // Collect manufacturer
+                manufacturer: manufacturerInput ? manufacturerInput.value : "", 
                 quantity: quantityInput ? parseInt(quantityInput.value) : 1,
                 isManual: row.dataset.isManual === "true",
-                product: row.dataset.isManual === "true" ? null : row.dataset.itemId // Store product ID if not manual
+                product: row.dataset.isManual === "true" ? null : row.dataset.itemId 
             };
 
             if (!lineItem.isManual) {
                 lineItem.pricingMethod = pricingMethodSelect ? pricingMethodSelect.value : "Margin";
                 lineItem.marginPercent = marginPercentInput && !marginPercentInput.disabled ? parseFloat(marginPercentInput.value) : null;
-            } else {
-                 // For manual items, ensure these are not sent or are explicitly null if backend expects them
-                lineItem.pricingMethod = null;
-                lineItem.marginPercent = null;
             }
             
             console.log("DEBUG: Collected line item:", lineItem);
@@ -459,7 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     console.log("DEBUG: Save error response text:", text);
                     errorData = JSON.parse(text); 
                 } catch (e) { 
-                    console.warn("Could not parse error JSON from save offer:", e, "Raw text:", errorData.rawText);
+                    console.warn("Could not parse error JSON from save offer:", e);
                 }
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
@@ -520,7 +540,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch(`/api/offers/${offerId}/${format}`, { headers: { "Authorization": `Bearer ${token}` } });
             showLoading(false);
             if (!response.ok) {
-                const errorData = await response.json();
+                let errorData = { message: `Error generating ${format.toUpperCase()}` };
+                try{ errorData = await response.json(); } catch(e){ console.warn("Could not parse error from generate output"); }
                 throw new Error(errorData.message || `Error generating ${format.toUpperCase()}`);
             }
             const blob = await response.blob();
@@ -550,7 +571,6 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("DEBUG: Not on offers page, or core elements missing.");
         }
     } else {
-        // If checkAuth fails and redirects, this part might not be reached, which is fine.
         console.log("DEBUG: Auth check failed, not initializing offer page logic.");
     }
 });
