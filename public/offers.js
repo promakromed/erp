@@ -108,6 +108,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (row) row.remove();
                 }
             });
+            // Event delegation for pricing method change is now handled inside addLineItemRow for new rows
+            // For existing rows loaded with offer, this might still be needed if not re-added via addLineItemRow
             lineItemsBody.addEventListener("change", (e) => {
                 if (e.target.classList.contains("pricing-method")) {
                     const row = e.target.closest("tr");
@@ -209,7 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showOfferForm(offerData = null) {
-        console.log("DEBUG: showOfferForm function called. Offer data:", offerData);
+        console.log("DEBUG: showOfferForm function called. Offer data:", offerData ? JSON.stringify(offerData).substring(0, 500) + "..." : null);
         if (offerListSection) offerListSection.style.display = "none";
         if (offerFormSection) offerFormSection.style.display = "block";
         if (offerForm) offerForm.reset();
@@ -220,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (validityInput && offerData) validityInput.value = offerData.validityDate ? offerData.validityDate.split("T")[0] : "";
         if (termsInput && offerData) termsInput.value = offerData.terms || "";
         if (statusSelect && offerData) statusSelect.value = offerData.status || "Draft";
-        if (globalMarginInput && offerData) globalMarginInput.value = offerData.globalMarginPercent || "";
+        if (globalMarginInput && offerData) globalMarginInput.value = offerData.globalMarginPercent !== undefined ? offerData.globalMarginPercent : "";
 
         if (generatePdfBtn) generatePdfBtn.style.display = currentOfferId ? "inline-block" : "none";
         if (generateCsvBtn) generateCsvBtn.style.display = currentOfferId ? "inline-block" : "none";
@@ -230,6 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showError("");
 
         if (offerData && offerData.lineItems) {
+            console.log("DEBUG: Populating existing line items for offer:", offerData.lineItems);
             offerData.lineItems.forEach(item => addLineItemRow(item, false)); // false for not manual
         }
     }
@@ -241,8 +244,8 @@ document.addEventListener("DOMContentLoaded", () => {
         loadOffers();
     }
 
-    async function populateClientDropdown(selectedClientId = null) {
-        console.log("DEBUG: populateClientDropdown function called");
+    async function populateClientDropdown(selectedClientRef = null) {
+        console.log("DEBUG: populateClientDropdown called with selectedClientRef:", selectedClientRef);
         const token = getAuthToken();
         if (!token || !clientSelect) { console.error("DEBUG: Token or clientSelect not found in populateClientDropdown"); return; }
         clientSelect.innerHTML = "<option value=\"\">Select Client...</option>"; 
@@ -254,7 +257,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const option = document.createElement("option");
                 option.value = client._id;
                 option.textContent = `${client.companyName} (${client.contactName || 'N/A'})`;
-                if (selectedClientId && (client._id === selectedClientId || (selectedClientId._id && client._id === selectedClientId._id) )) {
+                // Handle selectedClientId which might be an object with _id or just an ID string
+                const selectedClientId = selectedClientRef ? (selectedClientRef._id || selectedClientRef) : null;
+                if (selectedClientId && client._id === selectedClientId) {
                     option.selected = true;
                 }
                 clientSelect.appendChild(option);
@@ -286,64 +291,155 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // REWRITTEN addLineItemRow function
     function addLineItemRow(itemData, isManual = true) {
-        console.log("DEBUG: addLineItemRow called. Item data:", itemData, "Is manual:", isManual);
-        if (!lineItemsBody) { console.error("DEBUG: lineItemsBody not found in addLineItemRow"); return; }
+        console.log(`DEBUG: addLineItemRow (v3) called. Is manual: ${isManual}. Item data:`, JSON.stringify(itemData));
+        if (!lineItemsBody) {
+            console.error("CRITICAL: lineItemsBody not found in addLineItemRow. Cannot add row.");
+            return;
+        }
 
         const row = lineItemsBody.insertRow();
-        // Ensure itemData is an object, even if undefined is passed for manual add
-        const currentItemData = itemData || {}; 
-        const productDetails = currentItemData.product || currentItemData; // For bulk add, product is in currentItemData.product. For existing items, fields are directly on currentItemData or currentItemData.product
+        const currentItemData = itemData || {};
+        
+        // When loading existing items, itemData is the line item from DB.
+        // itemData.product might be an ID string or a populated object.
+        // For bulk-add, itemData is { product: { actual_product_details }, quantity: X, pricingMethod: Y }
+        // For manual add, itemData is undefined.
 
-        row.dataset.itemId = !isManual && productDetails._id ? productDetails._id : (currentItemData._id || `manual_${Date.now()}`);
+        let productSource = {}; // This will hold the direct source of product fields like itemNumber, manufacturer, description
+        if (!isManual) {
+            if (currentItemData.product && typeof currentItemData.product === 'object') {
+                productSource = currentItemData.product; // Populated product object (e.g. from bulk add or existing item load)
+            } else {
+                // This case might occur if product is not populated on existing items, or if itemData itself has the fields.
+                // However, for bulk add, currentItemData.product IS the object.
+                // For existing items, if not populated, we might need to fetch details or show placeholders.
+                // For now, assume productSource will get the fields if they exist directly on currentItemData for some legacy reason.
+                productSource = currentItemData; 
+            }
+        }
+        console.log(`DEBUG: Product source for row:`, JSON.stringify(productSource));
+
+        row.dataset.itemId = !isManual && productSource && productSource._id ? productSource._id : (currentItemData._id || `manual_${Date.now()}`);
         row.dataset.isManual = String(isManual);
 
-        let itemNo, manufacturer, description, quantity, unitPriceUSD, pricingMethod, marginPercent, lineTotalUSD;
+        let itemNoVal = "", manufVal = "", descVal = "", qtyVal = 1;
+        let unitPriceDisplay = "TBD", pricingMethodVal = "Margin", marginPercentVal = "";
+        let lineTotalDisplay = "TBD";
+        let inputsReadOnly = !isManual;
+        let pricingMethodDisabled = isManual;
+        let marginInputDisabled = isManual;
 
         if (isManual) {
-            itemNo = "";
-            manufacturer = ""; // Manual items can have manufacturer typed in
-            description = "";
-            quantity = 1;
-            unitPriceUSD = "TBD";
-            pricingMethod = "Margin"; // Default for UI consistency, but will be disabled by logic below
-            marginPercent = "";
-            lineTotalUSD = "TBD";
+            console.log("DEBUG: Manual item row setup.");
+            // Default values for manual add are already set
+            pricingMethodVal = "Margin"; // Though select will be disabled
+            marginInputDisabled = true; 
         } else {
-            itemNo = productDetails.itemNumber || "";
-            manufacturer = productDetails.manufacturer || "";
-            description = productDetails.description || "";
-            quantity = currentItemData.quantity || 1;
-            unitPriceUSD = currentItemData.unitPriceUSD ? parseFloat(currentItemData.unitPriceUSD).toFixed(2) : 'TBD';
-            pricingMethod = currentItemData.pricingMethod || "Margin";
-            marginPercent = currentItemData.marginPercent || (currentItemData.pricingMethod === "PriceList" ? "" : (globalMarginInput ? globalMarginInput.value : ""));
-            lineTotalUSD = currentItemData.lineTotalUSD ? parseFloat(currentItemData.lineTotalUSD).toFixed(2) : 'TBD';
+            console.log("DEBUG: Non-manual item row setup.");
+            itemNoVal = productSource.itemNumber || "N/A"; // Use N/A if truly missing
+            manufVal = productSource.manufacturer || "N/A";
+            descVal = productSource.description || "N/A";
+            qtyVal = currentItemData.quantity !== undefined ? currentItemData.quantity : 1;
+            unitPriceDisplay = currentItemData.unitPriceUSD !== undefined ? parseFloat(currentItemData.unitPriceUSD).toFixed(2) : 'TBD';
+            pricingMethodVal = currentItemData.pricingMethod || "Margin";
+            
+            if (pricingMethodVal === 'PriceList') {
+                marginPercentVal = ""; 
+                marginInputDisabled = true;
+            } else { // Margin method
+                marginPercentVal = currentItemData.marginPercent !== undefined && currentItemData.marginPercent !== null 
+                                   ? currentItemData.marginPercent 
+                                   : (globalMarginInput ? globalMarginInput.value : "");
+                marginInputDisabled = false;
+            }
+            lineTotalDisplay = currentItemData.lineTotalUSD !== undefined ? parseFloat(currentItemData.lineTotalUSD).toFixed(2) : 'TBD';
         }
-        
-        console.log(`DEBUG: Populating row - Item No: ${itemNo}, Manuf: ${manufacturer}, Desc: ${description}, Qty: ${quantity}, Price: ${unitPriceUSD}, Method: ${pricingMethod}, Margin: ${marginPercent}`);
+        if (isManual) marginInputDisabled = true; // Ensure margin is disabled for manual
+        if (!isManual && pricingMethodVal === 'PriceList') marginInputDisabled = true; // Also for non-manual if PriceList
 
-        // Ensure correct order and elements as per the 9-column HTML structure
-        row.innerHTML = `
-            <td><input type="text" class="form-control item-number" value="${itemNo}" ${!isManual ? 'readonly' : ''} placeholder="Item No."></td>
-            <td><input type="text" class="form-control manufacturer" value="${manufacturer}" ${!isManual ? 'readonly' : ''} placeholder="Manuf."></td>
-            <td><input type="text" class="form-control description" value="${description}" ${!isManual ? 'readonly' : ''} placeholder="Description"></td>
-            <td><input type="number" class="form-control quantity" value="${quantity}" min="1" placeholder="Qty"></td>
-            <td class="unit-price">${unitPriceUSD}</td>
-            <td>
-                <select class="form-select pricing-method" ${isManual ? 'disabled' : ''}>
-                    <option value="Margin" ${pricingMethod === 'Margin' ? 'selected' : ''}>Margin</option>
-                    <option value="PriceList" ${pricingMethod === 'PriceList' ? 'selected' : ''}>Price List</option>
-                </select>
-            </td>
-            <td><input type="number" class="form-control margin-percent" value="${marginPercent}" placeholder="%" ${(isManual || pricingMethod === 'PriceList') ? 'disabled' : ''}></td>
-            <td class="line-total">${lineTotalUSD}</td>
-            <td><button type="button" class="btn btn-sm btn-danger remove-item-btn"><i class="fas fa-times"></i></button></td>
-        `;
-        // Re-apply disabled state for margin if needed after innerHTML overwrite
-        if (!isManual && pricingMethod === 'PriceList') {
-            const marginInputInRow = row.querySelector('.margin-percent');
-            if (marginInputInRow) marginInputInRow.disabled = true;
-        }
+        console.log(`DEBUG: Final values for row - ItemNo: ${itemNoVal}, Manuf: ${manufVal}, Desc: ${descVal}, Qty: ${qtyVal}, UnitPrice: ${unitPriceDisplay}, PricingMethod: ${pricingMethodVal}, Margin%: ${marginPercentVal}, LineTotal: ${lineTotalDisplay}`);
+
+        // Create cells meticulously
+        // 1. Item No.
+        let cell1 = row.insertCell();
+        let input1 = document.createElement("input");
+        input1.type = "text"; input1.className = "form-control item-number"; input1.value = itemNoVal;
+        if (inputsReadOnly) input1.readOnly = true;
+        input1.placeholder = "Item No."; cell1.appendChild(input1);
+
+        // 2. Manufacturer
+        let cell2 = row.insertCell();
+        let input2 = document.createElement("input");
+        input2.type = "text"; input2.className = "form-control manufacturer"; input2.value = manufVal;
+        if (inputsReadOnly) input2.readOnly = true;
+        input2.placeholder = "Manuf."; cell2.appendChild(input2);
+
+        // 3. Description
+        let cell3 = row.insertCell();
+        let input3 = document.createElement("input");
+        input3.type = "text"; input3.className = "form-control description"; input3.value = descVal;
+        if (inputsReadOnly) input3.readOnly = true;
+        input3.placeholder = "Description"; cell3.appendChild(input3);
+
+        // 4. Qty
+        let cell4 = row.insertCell();
+        let input4 = document.createElement("input");
+        input4.type = "number"; input4.className = "form-control quantity"; input4.value = qtyVal;
+        input4.min = "1"; input4.placeholder = "Qty"; cell4.appendChild(input4);
+
+        // 5. Unit Price (USD) - Display only
+        let cell5 = row.insertCell();
+        cell5.className = "unit-price";
+        cell5.textContent = unitPriceDisplay;
+
+        // 6. Pricing Method
+        let cell6 = row.insertCell();
+        const select6 = document.createElement("select");
+        select6.className = "form-select pricing-method";
+        if (pricingMethodDisabled) select6.disabled = true;
+        let option6a = document.createElement("option");
+        option6a.value = "Margin"; option6a.textContent = "Margin";
+        if (pricingMethodVal === "Margin") option6a.selected = true;
+        select6.appendChild(option6a);
+        let option6b = document.createElement("option");
+        option6b.value = "PriceList"; option6b.textContent = "Price List";
+        if (pricingMethodVal === "PriceList") option6b.selected = true;
+        select6.appendChild(option6b);
+        cell6.appendChild(select6);
+
+        // 7. Margin %
+        let cell7 = row.insertCell();
+        let input7 = document.createElement("input");
+        input7.type = "number"; input7.className = "form-control margin-percent"; input7.value = marginPercentVal;
+        input7.placeholder = "%";
+        if (marginInputDisabled) input7.disabled = true;
+        cell7.appendChild(input7);
+
+        // 8. Line Total (USD) - Display only
+        let cell8 = row.insertCell();
+        cell8.className = "line-total";
+        cell8.textContent = lineTotalDisplay;
+
+        // 9. Actions
+        let cell9 = row.insertCell();
+        const button9 = document.createElement("button");
+        button9.type = "button"; button9.className = "btn btn-sm btn-danger remove-item-btn";
+        const icon9 = document.createElement("i");
+        icon9.className = "fas fa-times";
+        button9.appendChild(icon9);
+        cell9.appendChild(button9);
+        
+        // Add event listener for pricing method change on this new row's select
+        select6.addEventListener('change', function() {
+            const currentMarginInput = this.closest('tr').querySelector('.margin-percent');
+            if (currentMarginInput) {
+                currentMarginInput.disabled = this.value === 'PriceList';
+                if (currentMarginInput.disabled) currentMarginInput.value = '';
+            }
+        });
+        console.log("DEBUG: addLineItemRow (v3) finished successfully for row with itemNo:", itemNoVal);
     }
 
     async function handleBulkAddItems() {
@@ -356,7 +452,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return; 
         }
 
-        const manufacturerValue = bulkAddManufacturerSelect.value; // Use a different variable name to avoid conflict
+        const manufacturerValue = bulkAddManufacturerSelect.value;
         const partNumbersRaw = bulkAddPartNumbersTextarea.value;
 
         if (!manufacturerValue) {
@@ -398,7 +494,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             productsFound.forEach(product => {
-                // Pass product data directly to addLineItemRow, it expects itemData.product for non-manual items
+                // For bulk add, product is the direct product object from backend.
+                // We wrap it in an object that addLineItemRow expects for non-manual items.
                 addLineItemRow({ product: product, quantity: 1, pricingMethod: 'Margin' }, false); 
             });
             showBulkAddStatus(`${productsFound.length} product(s) added.`, false);
@@ -454,11 +551,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 lineItem.marginPercent = marginPercentInput && !marginPercentInput.disabled ? parseFloat(marginPercentInput.value) : null;
             }
             
-            console.log("DEBUG: Collected line item:", lineItem);
+            console.log("DEBUG: Collected line item for save:", JSON.stringify(lineItem));
             offerData.lineItems.push(lineItem);
         });
         
-        console.log("DEBUG: Offer data to save:", offerData);
+        console.log("DEBUG: Offer data to save:", JSON.stringify(offerData));
 
         showLoading(true);
         showError("");
