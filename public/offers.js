@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const saveOfferBtn = document.getElementById("save-offer-btn");
     const cancelOfferBtn = document.getElementById("cancel-offer-btn");
     const addItemBtn = document.getElementById("add-item-btn"); // Manual add
-    // const addProductBtn = document.getElementById("add-product-btn"); // OLD DB add button - REMOVED
     const generatePdfBtn = document.getElementById("generate-pdf-btn");
     const generateCsvBtn = document.getElementById("generate-csv-btn");
     const loadingIndicator = document.getElementById("loading-indicator");
@@ -30,40 +29,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // NEW Bulk Add Elements
     const bulkAddManufacturerSelect = document.getElementById("bulk-add-manufacturer");
     const bulkAddPartNumbersTextarea = document.getElementById("bulk-add-part-numbers");
-    const bulkAddBtn = document.getElementById("bulk-add-button");
-    const bulkAddError = document.getElementById("bulk-add-error");
-    const bulkAddLoading = document.getElementById("bulk-add-loading");
+    const bulkAddBtn = document.getElementById("bulk-add-button"); 
+    const bulkAddStatus = document.getElementById("bulk-add-status");
 
-    // OLD Product Search Modal Elements (Keep refs for now, might remove later)
-    const productSearchModal = document.getElementById("product-search-modal");
-    const productSearchInput = document.getElementById("product-search-input");
-    const productSearchButton = document.getElementById("product-search-button");
-    const productSearchResultsBody = document.getElementById("product-search-results");
-    const productSearchLoading = document.getElementById("product-search-loading");
-    const productSearchError = document.getElementById("product-search-error");
-
-    let currentOfferId = null; // To keep track of the offer being edited
-    // let productSearchModalInstance = null; // OLD modal instance
+    let currentOfferId = null;
 
     // --- Utility Functions ---
     function checkAuth() {
         console.log("DEBUG: checkAuth function called");
         const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-        console.log("DEBUG: localStorage content:", localStorage);
-        console.log("DEBUG: Retrieved userInfo:", userInfo);
-
         if (!userInfo || !userInfo.token) {
-            console.error("DEBUG: Token not found in userInfo. Redirecting to login.");
+            console.error("DEBUG: Token not found. Redirecting to login.");
             alert("Authentication token not found. Please log in again.");
             window.location.href = "/login.html";
             return false;
-        } else {
-            console.log("DEBUG: Token found in userInfo.");
-            if (userNameDisplay) {
-                userNameDisplay.textContent = userInfo.name || "User";
-            }
-            return true;
         }
+        if (userNameDisplay) userNameDisplay.textContent = userInfo.name || "User";
+        return true;
     }
 
     function getAuthToken() {
@@ -72,9 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showLoading(show) {
-        if (loadingIndicator) {
-            loadingIndicator.style.display = show ? "block" : "none";
-        }
+        if (loadingIndicator) loadingIndicator.style.display = show ? "block" : "none";
     }
 
     function showError(message, element = errorMessage) {
@@ -85,23 +65,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function showBulkAddLoading(show) {
-        if (bulkAddLoading) {
-            bulkAddLoading.style.display = show ? "inline-block" : "none";
+    function showBulkAddStatus(message, isError = false) {
+        if (bulkAddStatus) {
+            bulkAddStatus.textContent = message;
+            bulkAddStatus.className = `mt-2 small ${isError ? "text-danger" : "text-success"}`;
+            bulkAddStatus.style.display = message ? "block" : "none";
         }
-    }
-
-    function showBulkAddError(message) {
-        showError(message, bulkAddError);
     }
 
     function formatDateEuropean(dateString) {
         if (!dateString) return "N/A";
         try {
             const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return "Invalid Date";
-            }
+            if (isNaN(date.getTime())) return "Invalid Date";
             return date.toLocaleDateString("en-GB");
         } catch (e) {
             console.error("Error formatting date:", dateString, e);
@@ -112,153 +88,36 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- Event Listener Setup ---
     function setupEventListeners() {
         console.log("DEBUG: setupEventListeners function called");
-
-        if (createOfferBtn) {
-            createOfferBtn.addEventListener("click", () => {
-                console.log("DEBUG: Create New Offer button clicked!");
-                currentOfferId = null;
-                showOfferForm();
-            });
-        } else {
-            console.error("DEBUG: Could not find create-offer-btn");
-        }
-
-        if (offerForm) {
-            offerForm.addEventListener("submit", saveOffer);
-        } else {
-            console.error("DEBUG: Could not find offer-form");
-        }
-
-        if (cancelOfferBtn) {
-            cancelOfferBtn.addEventListener("click", () => {
-                console.log("DEBUG: Cancel button clicked");
-                showOfferList();
-            });
-        } else {
-            console.error("DEBUG: Could not find cancel-offer-btn");
-        }
-
-        if (addItemBtn) {
-            addItemBtn.addEventListener("click", () => {
-                console.log("DEBUG: Add Item Manually button clicked!");
-                addLineItemRow(); // Add manual row
-            });
-        } else {
-            console.error("DEBUG: Could not find add-item-btn");
-        }
-
-        // NEW Bulk Add Listener
+        if (createOfferBtn) createOfferBtn.addEventListener("click", () => { currentOfferId = null; showOfferForm(); });
+        if (offerForm) offerForm.addEventListener("submit", saveOffer);
+        if (cancelOfferBtn) cancelOfferBtn.addEventListener("click", showOfferList);
+        if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow()); // Add manual row
         if (bulkAddBtn) {
             bulkAddBtn.addEventListener("click", handleBulkAddItems);
         } else {
-            console.error("DEBUG: Could not find bulk-add-btn");
+            console.log("DEBUG: Could not find bulk-add-button during setupEventListeners");
         }
-
-        // OLD Product Search Modal Listeners (Commented out for now)
-        /*
-        if (productSearchButton) {
-            productSearchButton.addEventListener("click", handleProductSearch);
-        } else {
-            console.error("DEBUG: Could not find product-search-button");
-        }
-        if (productSearchInput) {
-            productSearchInput.addEventListener("keypress", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleProductSearch();
-                }
-            });
-        } else {
-            console.error("DEBUG: Could not find product-search-input");
-        }
-        if (productSearchResultsBody) {
-            productSearchResultsBody.addEventListener("click", (e) => {
-                if (e.target.classList.contains("select-product-btn")) {
-                    const productData = JSON.parse(e.target.getAttribute("data-product"));
-                    addProductLineItem(productData);
-                    if (productSearchModalInstance) {
-                        productSearchModalInstance.hide();
-                    }
-                }
-            });
-        } else {
-            console.error("DEBUG: Could not find product-search-results");
-        }
-        if (productSearchModal) {
-            productSearchModalInstance = new bootstrap.Modal(productSearchModal);
-            productSearchModal.addEventListener("hidden.bs.modal", () => {
-                if (productSearchInput) productSearchInput.value = "";
-                if (productSearchResultsBody) productSearchResultsBody.innerHTML = "";
-                if (productSearchError) productSearchError.style.display = "none";
-            });
-        } else {
-            console.error("DEBUG: Could not find product-search-modal");
-        }
-        */
-
-        if (generatePdfBtn) {
-            generatePdfBtn.addEventListener("click", () => {
-                if (currentOfferId) {
-                    console.log(`DEBUG: PDF button clicked for offer ID: ${currentOfferId}`);
-                    generateOfferOutput(currentOfferId, "pdf");
-                } else {
-                    console.error("DEBUG: Cannot generate PDF, currentOfferId is null");
-                }
-            });
-        } else {
-            console.error("DEBUG: Could not find generate-pdf-btn");
-        }
-
-        if (generateCsvBtn) {
-            generateCsvBtn.addEventListener("click", () => {
-                if (currentOfferId) {
-                    console.log(`DEBUG: CSV button clicked for offer ID: ${currentOfferId}`);
-                    generateOfferOutput(currentOfferId, "csv");
-                } else {
-                    console.error("DEBUG: Cannot generate CSV, currentOfferId is null");
-                }
-            });
-        } else {
-            console.error("DEBUG: Could not find generate-csv-btn");
-        }
-
-        if (logoutButton) {
-            logoutButton.addEventListener("click", () => {
-                console.log("DEBUG: Logout button clicked");
-                localStorage.removeItem("userInfo");
-                window.location.href = "/login.html";
-            });
-        } else {
-            console.error("DEBUG: Could not find logout-button");
-        }
+        if (generatePdfBtn) generatePdfBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "pdf"); });
+        if (generateCsvBtn) generateCsvBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "csv"); });
+        if (logoutButton) logoutButton.addEventListener("click", () => { localStorage.removeItem("userInfo"); window.location.href = "/login.html"; });
 
         if (lineItemsBody) {
             lineItemsBody.addEventListener("click", (e) => {
                 if (e.target.closest(".remove-item-btn")) {
                     const row = e.target.closest("tr");
-                    if (row) {
-                        console.log("DEBUG: Remove item button clicked");
-                        row.remove();
-                        // Add logic to recalculate totals if needed
-                    }
+                    if (row) row.remove();
                 }
             });
-            // Add listener for pricing method change
             lineItemsBody.addEventListener("change", (e) => {
                 if (e.target.classList.contains("pricing-method")) {
-                    console.log("DEBUG: Pricing method changed");
                     const row = e.target.closest("tr");
                     const marginInput = row.querySelector(".margin-percent");
                     if (marginInput) {
                         marginInput.disabled = e.target.value !== "Margin";
-                        if (marginInput.disabled) {
-                            marginInput.value = ""; // Clear margin if Price List selected
-                        }
+                        if (marginInput.disabled) marginInput.value = "";
                     }
                 }
             });
-        } else {
-            console.error("DEBUG: Could not find line-items-body");
         }
     }
 
@@ -266,32 +125,20 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadOffers() {
         console.log("DEBUG: loadOffers function called");
         const token = getAuthToken();
-        if (!token) {
-            console.error("DEBUG: No token found in loadOffers");
-            showError("Authentication error. Please log in again.");
-            return;
-        }
-        if (!offerListContainer) {
-            console.error("DEBUG: offerListContainer not found");
-            return;
-        }
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+        if (!offerListContainer) { console.error("DEBUG: offerListContainer not found in loadOffers"); return; }
         offerListContainer.innerHTML = "";
         showError("");
         showLoading(true);
         try {
-            const response = await fetch("/api/offers", {
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            });
+            const response = await fetch("/api/offers", { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } });
             showLoading(false);
             if (!response.ok) {
-                const errorData = await response.json();
+                let errorData = { message: `HTTP error! status: ${response.status}` };
+                try { errorData = await response.json(); } catch (e) { console.warn("Could not parse error JSON from /api/offers"); }
                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
             const offers = await response.json();
-            console.log("DEBUG: Fetched offers:", offers);
             displayOffers(offers);
         } catch (error) {
             console.error("Error fetching offers:", error);
@@ -302,7 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function displayOffers(offers) {
         console.log("DEBUG: displayOffers function called");
-        if (!offerListContainer) return;
+        if (!offerListContainer) { console.error("DEBUG: offerListContainer not found in displayOffers"); return; }
         offerListContainer.innerHTML = "";
         if (!offers || offers.length === 0) {
             offerListContainer.innerHTML = "<p>No offers found.</p>";
@@ -313,32 +160,24 @@ document.addEventListener("DOMContentLoaded", () => {
         table.innerHTML = `
             <thead>
                 <tr>
-                    <th>Offer ID</th>
-                    <th>Client Company</th>
-                    <th>Date (DD/MM/YYYY)</th>
-                    <th>Validity (DD/MM/YYYY)</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>Offer ID</th><th>Client Company</th><th>Date (DD/MM/YYYY)</th><th>Validity (DD/MM/YYYY)</th><th>Status</th><th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
-            </tbody>
+            <tbody></tbody>
         `;
         const tbody = table.querySelector("tbody");
         offers.forEach(offer => {
             const clientCompany = offer.client ? offer.client.companyName : "N/A";
             const tr = document.createElement("tr");
-            const offerDateFormatted = formatDateEuropean(offer.createdAt);
-            const validityDateFormatted = formatDateEuropean(offer.validityDate);
             tr.innerHTML = `
                 <td>${offer.offerId || "N/A"}</td>
                 <td>${clientCompany}</td>
-                <td>${offerDateFormatted}</td>
-                <td>${validityDateFormatted}</td>
+                <td>${formatDateEuropean(offer.createdAt)}</td>
+                <td>${formatDateEuropean(offer.validityDate)}</td>
                 <td><span class="badge bg-${getStatusColor(offer.status)}">${offer.status}</span></td>
                 <td>
                     <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}" title="View/Edit"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? "disabled title=\'Only Draft offers can be deleted\'" : "title=\'Delete\'"}><i class="fas fa-trash-alt"></i></button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? "disabled title=\"Only Draft offers can be deleted\"" : "title=\"Delete\""}><i class="fas fa-trash-alt"></i></button>
                     <button class="btn btn-sm btn-secondary pdf-btn" data-id="${offer._id}" title="Generate PDF"><i class="fas fa-file-pdf"></i></button>
                     <button class="btn btn-sm btn-success csv-btn" data-id="${offer._id}" title="Generate CSV"><i class="fas fa-file-csv"></i></button>
                 </td>
@@ -351,21 +190,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!targetButton) return;
             const id = targetButton.getAttribute("data-id");
             if (!id) return;
-            if (targetButton.classList.contains("view-edit-btn")) {
-                console.log(`DEBUG: View/Edit button clicked for offer ID: ${id}`);
-                loadOfferForEditing(id);
-            } else if (targetButton.classList.contains("delete-btn")) {
-                console.log(`DEBUG: Delete button clicked for offer ID: ${id}`);
-                if (confirm("Are you sure you want to delete this offer?")) {
-                    deleteOffer(id);
-                }
-            } else if (targetButton.classList.contains("pdf-btn")) {
-                console.log(`DEBUG: PDF button clicked for offer ID: ${id}`);
-                generateOfferOutput(id, "pdf");
-            } else if (targetButton.classList.contains("csv-btn")) {
-                console.log(`DEBUG: CSV button clicked for offer ID: ${id}`);
-                generateOfferOutput(id, "csv");
-            }
+            if (targetButton.classList.contains("view-edit-btn")) loadOfferForEditing(id);
+            else if (targetButton.classList.contains("delete-btn")) { if (confirm("Are you sure you want to delete this offer?")) deleteOffer(id); }
+            else if (targetButton.classList.contains("pdf-btn")) generateOfferOutput(id, "pdf");
+            else if (targetButton.classList.contains("csv-btn")) generateOfferOutput(id, "csv");
         });
     }
 
@@ -380,523 +208,350 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function showOfferForm() {
-        console.log("DEBUG: showOfferForm function called");
+    function showOfferForm(offerData = null) {
+        console.log("DEBUG: showOfferForm function called. Offer data:", offerData);
         if (offerListSection) offerListSection.style.display = "none";
         if (offerFormSection) offerFormSection.style.display = "block";
         if (offerForm) offerForm.reset();
         if (lineItemsBody) lineItemsBody.innerHTML = "";
-        if (offerIdDisplay) offerIdDisplay.textContent = "New Offer";
-        if (generatePdfBtn) generatePdfBtn.style.display = "none";
-        if (generateCsvBtn) generateCsvBtn.style.display = "none";
-        currentOfferId = null;
-        populateClientDropdown();
-        populateManufacturerDropdown(); // NEW: Populate manufacturer dropdown
+        
+        currentOfferId = offerData ? offerData._id : null;
+        if (offerIdDisplay) offerIdDisplay.textContent = currentOfferId ? `Editing Offer ID: ${offerData.offerId}` : "Creating New Offer";
+        if (validityInput && offerData) validityInput.value = offerData.validityDate ? offerData.validityDate.split("T")[0] : "";
+        if (termsInput && offerData) termsInput.value = offerData.terms || "";
+        if (statusSelect && offerData) statusSelect.value = offerData.status || "Draft";
+        if (globalMarginInput && offerData) globalMarginInput.value = offerData.globalMarginPercent || "";
+
+        if (generatePdfBtn) generatePdfBtn.style.display = currentOfferId ? "inline-block" : "none";
+        if (generateCsvBtn) generateCsvBtn.style.display = currentOfferId ? "inline-block" : "none";
+        
+        populateClientDropdown(offerData ? offerData.client : null);
+        populateManufacturerDropdown(); 
+        showError("");
+
+        if (offerData && offerData.lineItems) {
+            offerData.lineItems.forEach(item => addLineItemRow(item, false)); // false for not manual
+        }
     }
 
     function showOfferList() {
         console.log("DEBUG: showOfferList function called");
-        if (offerFormSection) offerFormSection.style.display = "none";
         if (offerListSection) offerListSection.style.display = "block";
+        if (offerFormSection) offerFormSection.style.display = "none";
         loadOffers();
     }
 
-    async function populateClientDropdown() {
+    async function populateClientDropdown(selectedClientId = null) {
         console.log("DEBUG: populateClientDropdown function called");
         const token = getAuthToken();
-        if (!token || !clientSelect) return;
-        clientSelect.innerHTML = 	"<option value=\"\">Loading Clients...</option>";
+        if (!token || !clientSelect) { console.error("DEBUG: Token or clientSelect not found in populateClientDropdown"); return; }
+        clientSelect.innerHTML = "<option value=\"\">Select Client...</option>"; 
         try {
-            const response = await fetch("/api/clients", {
-                headers: { "Authorization": `Bearer ${token}` },
-            });
-            if (!response.ok) throw new Error("Failed to fetch clients");
+            const response = await fetch("/api/clients", { headers: { "Authorization": `Bearer ${token}` } });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const clients = await response.json();
-            clientSelect.innerHTML = "<option value=\"\">Select Client...</option>";
             clients.forEach(client => {
                 const option = document.createElement("option");
                 option.value = client._id;
-                option.textContent = `${client.companyName || client.clientName || "Unknown Client"} (ID: ${client._id.slice(-6)})`;
+                option.textContent = `${client.companyName} (${client.contactName || 'N/A'})`;
+                if (selectedClientId && (client._id === selectedClientId || client._id === selectedClientId._id)) {
+                    option.selected = true;
+                }
                 clientSelect.appendChild(option);
             });
         } catch (error) {
             console.error("Error populating client dropdown:", error);
-            clientSelect.innerHTML = "<option value=\"\">Error loading clients</option>";
-            showError("Error loading clients for dropdown. Please try again.");
+            showError("Could not load clients for dropdown.");
         }
     }
 
-    // NEW: Populate Manufacturer Dropdown
     async function populateManufacturerDropdown() {
         console.log("DEBUG: populateManufacturerDropdown function called");
         const token = getAuthToken();
-        if (!token || !bulkAddManufacturerSelect) {
-            console.error("DEBUG: Token or manufacturer select element not found");
-            return;
-        }
-        bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Loading Manufacturers...</option>";
+        if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG: Token or bulkAddManufacturerSelect not found"); return; }
+        bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
         try {
-            const response = await fetch("/api/products/manufacturers", {
-                headers: { "Authorization": `Bearer ${token}` },
-            });
-            if (!response.ok) throw new Error("Failed to fetch manufacturers");
+            // Assuming an endpoint /api/products/manufacturers exists and returns a list of unique manufacturer names
+            const response = await fetch("/api/products/manufacturers", { headers: { "Authorization": `Bearer ${token}` } });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const manufacturers = await response.json();
-            bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
             manufacturers.forEach(manufacturer => {
                 const option = document.createElement("option");
-                option.value = manufacturer;
+                option.value = manufacturer; // Assuming manufacturer is a string
                 option.textContent = manufacturer;
                 bulkAddManufacturerSelect.appendChild(option);
             });
         } catch (error) {
             console.error("Error populating manufacturer dropdown:", error);
-            bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Error loading manufacturers</option>";
-            showError("Error loading manufacturers for dropdown. Please try again.");
+            showBulkAddStatus("Could not load manufacturers.", true);
         }
     }
+
+    function addLineItemRow(itemData = {}, isManual = true) {
+        console.log("DEBUG: addLineItemRow called. Item data:", itemData, "Is manual:", isManual);
+        if (!lineItemsBody) { console.error("DEBUG: lineItemsBody not found in addLineItemRow"); return; }
+
+        const row = lineItemsBody.insertRow();
+        row.dataset.itemId = itemData.product ? itemData.product._id : (itemData._id || `manual_${Date.now()}`);
+        row.dataset.isManual = isManual;
+
+        // Columns: Item No, Manufacturer, Description, Qty, Unit Price (USD), Pricing Method, Margin %, Line Total (USD), Actions
+        const itemNo = isManual ? "" : (itemData.product ? itemData.product.itemNumber : (itemData.itemNumber || ""));
+        // CORRECTED MAPPING HERE:
+        const manufacturer = isManual ? "N/A" : (itemData.product ? itemData.product.manufacturer : (itemData.manufacturer || "N/A"));
+        const description = isManual ? "" : (itemData.product ? itemData.product.description : (itemData.description || ""));
+        
+        console.log(`DEBUG: Item No: ${itemNo}, Manufacturer: ${manufacturer}, Description: ${description}`);
+
+        row.innerHTML = `
+            <td><input type="text" class="form-control item-number" value="${itemNo}" ${!isManual ? 'readonly' : ''} placeholder="Item No."></td>
+            <td><input type="text" class="form-control manufacturer" value="${manufacturer}" ${!isManual ? 'readonly' : ''} placeholder="Manuf."></td>
+            <td><input type="text" class="form-control description" value="${description}" ${!isManual ? 'readonly' : ''} placeholder="Description"></td>
+            <td><input type="number" class="form-control quantity" value="${itemData.quantity || 1}" min="1" placeholder="Qty"></td>
+            <td class="unit-price">${itemData.unitPriceUSD ? parseFloat(itemData.unitPriceUSD).toFixed(2) : 'TBD'}</td>
+            <td>
+                <select class="form-select pricing-method" ${isManual ? 'disabled' : ''}>
+                    <option value="Margin" ${itemData.pricingMethod === 'Margin' ? 'selected' : ''}>Margin</option>
+                    <option value="PriceList" ${itemData.pricingMethod === 'PriceList' ? 'selected' : ''}>Price List</option>
+                </select>
+            </td>
+            <td><input type="number" class="form-control margin-percent" value="${itemData.marginPercent || ''}" placeholder="%" ${isManual || itemData.pricingMethod === 'PriceList' ? 'disabled' : ''}></td>
+            <td class="line-total">${itemData.lineTotalUSD ? parseFloat(itemData.lineTotalUSD).toFixed(2) : 'TBD'}</td>
+            <td><button type="button" class="btn btn-sm btn-danger remove-item-btn"><i class="fas fa-times"></i></button></td>
+        `;
+    }
+
+    async function handleBulkAddItems() {
+        console.log("DEBUG: handleBulkAddItems function called");
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error."); return; }
+        if (!bulkAddManufacturerSelect || !bulkAddPartNumbersTextarea) { 
+            console.error("DEBUG: Manufacturer select or part numbers textarea not found."); 
+            showBulkAddStatus("Error: UI elements for bulk add not found.", true);
+            return; 
+        }
+
+        const manufacturer = bulkAddManufacturerSelect.value;
+        const partNumbersRaw = bulkAddPartNumbersTextarea.value;
+
+        if (!manufacturer) {
+            showBulkAddStatus("Please select a manufacturer.", true);
+            return;
+        }
+        if (!partNumbersRaw.trim()) {
+            showBulkAddStatus("Please paste part numbers.", true);
+            return;
+        }
+
+        const partNumbers = partNumbersRaw.split(/\n|,|\s+/).map(pn => pn.trim()).filter(pn => pn);
+        if (partNumbers.length === 0) {
+            showBulkAddStatus("No valid part numbers entered.", true);
+            return;
+        }
+
+        showLoading(true);
+        showBulkAddStatus("Looking up products...");
+
+        try {
+            const response = await fetch("/api/products/bulk-lookup", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ manufacturer, partNumbers })
+            });
+            showLoading(false);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Server error: ${response.status}`);
+            }
+            const productsFound = await response.json();
+            console.log("DEBUG: Products found from bulk lookup:", productsFound);
+
+            if (productsFound.length === 0) {
+                showBulkAddStatus("No products found for the given manufacturer and part numbers.", true);
+                return;
+            }
+
+            productsFound.forEach(product => {
+                // We pass the whole product object as itemData.product for consistency with how existing items are loaded.
+                // The addLineItemRow function will then extract itemNumber, description, manufacturer from product.
+                // Ensure the product object from backend has 'itemNumber', 'description', 'manufacturer' fields.
+                addLineItemRow({ product: product, quantity: 1, pricingMethod: 'Margin' }, false); 
+            });
+            showBulkAddStatus(`${productsFound.length} product(s) added.`, false);
+            bulkAddPartNumbersTextarea.value = ""; // Clear textarea after adding
+
+        } catch (error) {
+            console.error("Error during bulk add:", error);
+            showLoading(false);
+            showBulkAddStatus(`Error: ${error.message}`, true);
+        }
+    }
+
 
     async function saveOffer(event) {
         event.preventDefault();
         console.log("DEBUG: saveOffer function called");
         const token = getAuthToken();
-        if (!token) {
-            showError("Authentication token missing. Cannot save offer. Please log in again.");
-            return;
-        }
-        if (!clientSelect || !validityInput || !termsInput || !statusSelect || !globalMarginInput || !lineItemsBody) {
-            console.error("DEBUG: One or more form elements not found in saveOffer");
-            showError("Form error. Please refresh the page.");
-            return;
-        }
+        if (!token) { showError("Authentication error. Please log in again."); return; }
 
-        const lineItemsData = [];
-        const rows = lineItemsBody.querySelectorAll("tr");
-        let formIsValid = true;
-
-        rows.forEach((row, index) => {
-            console.log(`DEBUG: Processing row ${index + 1}`);
-            const itemType = row.dataset.itemType;
-            const quantityInput = row.querySelector(".quantity");
-            const quantity = parseInt(quantityInput?.value, 10) || 0;
-
-            if (quantity <= 0) {
-                showError(`Invalid quantity for item ${index + 1}. Must be greater than 0.`);
-                quantityInput?.classList.add("is-invalid");
-                formIsValid = false;
-                return;
-            } else {
-                 quantityInput?.classList.remove("is-invalid");
-            }
-
-            const item = {
-                itemType: itemType,
-                quantity: quantity,
-            };
-
-            if (itemType === "database") {
-                console.log(`DEBUG: Row ${index + 1} is database type`);
-                item.productId = row.dataset.productId;
-                item.itemNo = row.querySelector(".item-no")?.textContent; // Get from text content
-                item.description = row.querySelector(".description")?.textContent; // Get from text content
-                item.manufacturer = row.querySelector(".manufacturer")?.textContent; // Get from text content
-                item.pricingMethod = row.querySelector(".pricing-method")?.value;
-                item.marginPercent = null;
-                console.log(`DEBUG: Row ${index + 1} pricing method: ${item.pricingMethod}`);
-
-                if (item.pricingMethod === "Margin") {
-                    const marginInput = row.querySelector(".margin-percent");
-                    const marginValue = parseFloat(marginInput?.value);
-                    console.log(`DEBUG: Row ${index + 1} margin input value: ${marginInput?.value}, parsed: ${marginValue}`);
-                    if (!isNaN(marginValue) && marginValue >= 0) {
-                        item.marginPercent = marginValue;
-                    } else if (marginInput?.value.trim() !== "") {
-                        showError(`Invalid margin percentage for item ${index + 1}. Must be a non-negative number.`);
-                        marginInput?.classList.add("is-invalid");
-                        formIsValid = false;
-                        return;
-                    } else {
-                        marginInput?.classList.remove("is-invalid");
-                        // If margin method selected but no value, use global margin (handled backend? or here?)
-                        // For now, send null if per-item margin is not validly entered.
-                    }
-                }
-                // Send base price/currency for backend calculation/validation
-                item.basePrice = parseFloat(row.dataset.basePrice) || 0;
-                item.baseCurrency = row.dataset.baseCurrency || "USD";
-                console.log(`DEBUG: Row ${index + 1} database item data:`, item);
-            } else { // Manual
-                console.log(`DEBUG: Row ${index + 1} is manual type`);
-                const itemNoInput = row.querySelector(".item-no");
-                const descriptionInput = row.querySelector(".description");
-                item.itemNo = itemNoInput?.value.trim();
-                item.description = descriptionInput?.value.trim();
-                if (!item.description) {
-                     showError(`Description is required for manual item ${index + 1}.`);
-                     descriptionInput?.classList.add("is-invalid");
-                     formIsValid = false;
-                     return;
-                } else {
-                    descriptionInput?.classList.remove("is-invalid");
-                }
-                console.log(`DEBUG: Row ${index + 1} manual item data:`, item);
-            }
-            lineItemsData.push(item);
-        });
-
-        if (!formIsValid) {
-            console.error("DEBUG: Form validation failed.");
-            return;
-        }
-
-        const globalMarginValue = parseFloat(globalMarginInput.value);
         const offerData = {
-            clientId: clientSelect.value,
+            client: clientSelect.value,
             validityDate: validityInput.value,
             terms: termsInput.value,
-            status: statusSelect.value || "Draft",
-            globalMarginPercent: (!isNaN(globalMarginValue) && globalMarginValue >= 0) ? globalMarginValue : null,
-            lineItems: lineItemsData,
+            status: statusSelect.value,
+            globalMarginPercent: parseFloat(globalMarginInput.value) || 0,
+            lineItems: []
         };
 
-        console.log("DEBUG: Saving offer data:", JSON.stringify(offerData, null, 2));
+        if (currentOfferId) {
+            offerData._id = currentOfferId;
+        }
 
-        const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
-        const method = currentOfferId ? "PUT" : "POST";
+        const rows = lineItemsBody.querySelectorAll("tr");
+        rows.forEach(row => {
+            const itemNumberInput = row.querySelector(".item-number");
+            const descriptionInput = row.querySelector(".description");
+            const manufacturerInput = row.querySelector(".manufacturer"); // Added for data collection
+            const quantityInput = row.querySelector(".quantity");
+            const pricingMethodSelect = row.querySelector(".pricing-method");
+            const marginPercentInput = row.querySelector(".margin-percent");
+
+            const lineItem = {
+                itemNumber: itemNumberInput ? itemNumberInput.value : "",
+                description: descriptionInput ? descriptionInput.value : "",
+                manufacturer: manufacturerInput ? manufacturerInput.value : "N/A", // Collect manufacturer
+                quantity: quantityInput ? parseInt(quantityInput.value) : 1,
+                isManual: row.dataset.isManual === "true",
+                product: row.dataset.isManual === "true" ? null : row.dataset.itemId // Store product ID if not manual
+            };
+
+            if (!lineItem.isManual) {
+                lineItem.pricingMethod = pricingMethodSelect ? pricingMethodSelect.value : "Margin";
+                lineItem.marginPercent = marginPercentInput && !marginPercentInput.disabled ? parseFloat(marginPercentInput.value) : null;
+            } else {
+                 // For manual items, ensure these are not sent or are explicitly null if backend expects them
+                lineItem.pricingMethod = null;
+                lineItem.marginPercent = null;
+            }
+            
+            console.log("DEBUG: Collected line item:", lineItem);
+            offerData.lineItems.push(lineItem);
+        });
+        
+        console.log("DEBUG: Offer data to save:", offerData);
 
         showLoading(true);
         showError("");
 
         try {
+            const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
+            const method = currentOfferId ? "PUT" : "POST";
             const response = await fetch(url, {
                 method: method,
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(offerData),
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify(offerData)
             });
             showLoading(false);
             if (!response.ok) {
-                let errorMsg = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMsg = errorData.message || JSON.stringify(errorData);
-                } catch (e) {
-                    errorMsg = await response.text();
-                    if (errorMsg.toLowerCase().includes("<!doctype html")) {
-                        errorMsg = "Server returned an HTML error page. Check server logs.";
-                    }
+                let errorData = { message: `Server error: ${response.status}` };
+                try { 
+                    const text = await response.text();
+                    console.log("DEBUG: Save error response text:", text);
+                    errorData = JSON.parse(text); 
+                } catch (e) { 
+                    console.warn("Could not parse error JSON from save offer:", e, "Raw text:", errorData.rawText);
                 }
-                throw new Error(errorMsg);
+                throw new Error(errorData.message || `Server error: ${response.status}`);
             }
             const savedOffer = await response.json();
             console.log("DEBUG: Offer saved successfully:", savedOffer);
             showOfferList();
+            alert("Offer saved successfully!");
         } catch (error) {
             console.error("Error saving offer:", error);
             showLoading(false);
-            let displayError = `Error saving offer: ${error.message}. Please try again.`;
-            if (error.message.includes("<")) {
-                displayError = "Error saving offer: Server returned an unexpected response. Please check server logs or contact support.";
-            }
-            showError(displayError);
+            showError(`Error saving offer: ${error.message}. Please try again.`);
         }
     }
 
     async function loadOfferForEditing(id) {
-        console.log(`DEBUG: loadOfferForEditing called for ID: ${id}`);
+        console.log("DEBUG: loadOfferForEditing function called with ID:", id);
         const token = getAuthToken();
-        if (!token) {
-            showError("Authentication error. Please log in again.");
-            return;
-        }
+        if (!token) { showError("Authentication error."); return; }
         showLoading(true);
-        showError("");
         try {
-            const response = await fetch(`/api/offers/${id}`, {
-                headers: { "Authorization": `Bearer ${token}` },
-            });
+            const response = await fetch(`/api/offers/${id}`, { headers: { "Authorization": `Bearer ${token}` } });
             showLoading(false);
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const offer = await response.json();
-            console.log("DEBUG: Fetched offer for editing:", offer);
-
-            if (offerForm) offerForm.reset();
-            if (clientSelect) clientSelect.value = offer.client?._id || "";
-            if (validityInput) validityInput.value = offer.validityDate ? offer.validityDate.split("T")[0] : "";
-            if (termsInput) termsInput.value = offer.terms || "";
-            if (statusSelect) statusSelect.value = offer.status || "Draft";
-            if (globalMarginInput) globalMarginInput.value = offer.globalMarginPercent ?? "";
-            if (offerIdDisplay) offerIdDisplay.textContent = `Editing Offer: ${offer.offerId}`;
-
-            if (lineItemsBody) {
-                lineItemsBody.innerHTML = "";
-                offer.lineItems.forEach(item => {
-                    console.log(`DEBUG: Loading line item for editing:`, item);
-                    if (item.itemType === "database") {
-                        const productData = {
-                            _id: item.productId,
-                            itemNo: item.itemNo,
-                            description: item.description,
-                            manufacturer: item.manufacturer,
-                            basePrice: item.basePrice,
-                            baseCurrency: item.baseCurrency
-                        };
-                        // Pass pricing method and margin used when saving
-                        addDatabaseLineItem(productData, item.quantity, item.pricingMethod, item.marginPercent);
-                    } else {
-                        addLineItemRow(item.itemNo, item.description, item.quantity);
-                    }
-                });
-            }
-
-            currentOfferId = offer._id;
-            if (generatePdfBtn) generatePdfBtn.style.display = "inline-block";
-            if (generateCsvBtn) generateCsvBtn.style.display = "inline-block";
-            showOfferForm();
-            populateManufacturerDropdown(); // Ensure manufacturer dropdown is populated on edit
+            console.log("DEBUG: Offer loaded for editing:", offer);
+            showOfferForm(offer);
         } catch (error) {
-            console.error(`Error fetching offer ${id}:`, error);
+            console.error("Error loading offer for editing:", error);
             showLoading(false);
-            showError(`Error loading offer details: ${error.message}. Please try again.`);
+            showError(`Error loading offer: ${error.message}`);
         }
     }
 
     async function deleteOffer(id) {
-        console.log(`DEBUG: deleteOffer called for ID: ${id}`);
+        console.log("DEBUG: deleteOffer function called with ID:", id);
         const token = getAuthToken();
-        if (!token) {
-            showError("Authentication error. Please log in again.");
-            return;
-        }
+        if (!token) { showError("Authentication error."); return; }
         showLoading(true);
-        showError("");
         try {
-            const response = await fetch(`/api/offers/${id}`, {
-                method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` },
-            });
+            const response = await fetch(`/api/offers/${id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${token}` } });
             showLoading(false);
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-            console.log(`DEBUG: Offer ${id} deleted successfully`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            alert("Offer deleted successfully.");
             loadOffers();
         } catch (error) {
-            console.error(`Error deleting offer ${id}:`, error);
+            console.error("Error deleting offer:", error);
             showLoading(false);
-            showError(`Error deleting offer: ${error.message}. Please try again.`);
+            showError(`Error deleting offer: ${error.message}`);
         }
     }
 
-    // Function to add a new line item row (Manual Entry)
-    function addLineItemRow(itemNo = "", description = "", quantity = 1) {
-        console.log("DEBUG: addLineItemRow (manual) called");
-        if (!lineItemsBody) return;
-        const row = document.createElement("tr");
-        row.dataset.itemType = "manual";
-        row.innerHTML = `
-            <td><input type="text" class="form-control form-control-sm item-no" value="${itemNo}"></td>
-            <td><input type="text" class="form-control form-control-sm description" value="${description}"></td>
-            <td>Manual</td> <!-- Manufacturer column -->
-            <td><input type="number" class="form-control form-control-sm quantity" min="1" value="${quantity}"></td>
-            <td>
-                <select class="form-select form-select-sm pricing-method" disabled>
-                    <option value="Manual">Manual</option>
-                </select>
-            </td>
-            <td><input type="number" class="form-control form-control-sm margin-percent" disabled></td>
-            <td class="unit-price">N/A</td>
-            <td class="line-total">N/A</td>
-            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
-        `;
-        lineItemsBody.appendChild(row);
-    }
-
-    // NEW: Function to add a line item row from Database (via Bulk Add)
-    function addDatabaseLineItem(product, quantity = 1, pricingMethod = "Margin", marginPercent = null) {
-        console.log(`DEBUG: addDatabaseLineItem called for product: ${product.itemNo}, quantity: ${quantity}, method: ${pricingMethod}, margin: ${marginPercent}`);
-        if (!lineItemsBody || !product) {
-            console.error("DEBUG: lineItemsBody or product data missing in addDatabaseLineItem");
-            return;
-        }
-        const row = document.createElement("tr");
-        row.dataset.itemType = "database";
-        row.dataset.productId = product._id;
-        row.dataset.basePrice = product.basePrice || 0;
-        row.dataset.baseCurrency = product.baseCurrency || "USD";
-
-        const isMarginSelected = pricingMethod === "Margin";
-        const marginValue = marginPercent !== null ? marginPercent : "";
-
-        row.innerHTML = `
-            <td class="item-no">${product.itemNo || "N/A"}</td>
-            <td class="description">${product.description || "N/A"}</td>
-            <td class="manufacturer">${product.manufacturer || "N/A"}</td>
-            <td><input type="number" class="form-control form-control-sm quantity" min="1" value="${quantity}"></td>
-            <td>
-                <select class="form-select form-select-sm pricing-method">
-                    <option value="PriceList">Price List</option> <!-- TODO: Check if price list exists for client/product -->
-                    <option value="Margin" ${isMarginSelected ? "selected" : ""}>Margin</option>
-                </select>
-            </td>
-            <td><input type="number" class="form-control form-control-sm margin-percent" min="0" step="0.01" value="${marginValue}" ${!isMarginSelected ? "disabled" : ""}></td>
-            <td class="unit-price">TBD</td> <!-- Placeholder, will be calculated by backend -->
-            <td class="line-total">TBD</td> <!-- Placeholder, will be calculated by backend -->
-            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
-        `;
-        lineItemsBody.appendChild(row);
-    }
-
-    // NEW: Handler for Bulk Add Items button
-    async function handleBulkAddItems() {
-        console.log("DEBUG: handleBulkAddItems called");
+    async function generateOfferOutput(offerId, format) {
+        console.log(`DEBUG: generateOfferOutput called for offer ID ${offerId}, format ${format}`);
         const token = getAuthToken();
-        if (!token) {
-            showBulkAddError("Authentication error. Please log in again.");
-            return;
-        }
-        if (!bulkAddManufacturerSelect || !bulkAddPartNumbersTextarea) {
-            console.error("DEBUG: Bulk add elements not found");
-            showBulkAddError("UI error. Please refresh the page.");
-            return;
-        }
-
-        const manufacturer = bulkAddManufacturerSelect.value;
-        const partNumbersRaw = bulkAddPartNumbersTextarea.value.trim();
-
-        if (!manufacturer) {
-            showBulkAddError("Please select a manufacturer.");
-            return;
-        }
-        if (!partNumbersRaw) {
-            showBulkAddError("Please paste part numbers.");
-            return;
-        }
-
-        // Split by newline or comma, trim whitespace, remove empty strings
-        const partNumbers = partNumbersRaw.split(/[\n,]+/).map(pn => pn.trim()).filter(pn => pn);
-
-        if (partNumbers.length === 0) {
-            showBulkAddError("No valid part numbers found after parsing.");
-            return;
-        }
-
-        console.log(`DEBUG: Bulk adding for manufacturer: ${manufacturer}, part numbers:`, partNumbers);
-        showBulkAddLoading(true);
-        showBulkAddError("");
-
-        try {
-            const response = await fetch("/api/products/bulk-lookup", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ manufacturer, partNumbers }),
-            });
-
-            showBulkAddLoading(false);
-
-            if (!response.ok) {
-                let errorMsg = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMsg = errorData.message || JSON.stringify(errorData);
-                } catch (e) { /* Ignore if response is not JSON */ }
-                throw new Error(errorMsg);
-            }
-
-            const foundProducts = await response.json();
-            console.log("DEBUG: Bulk lookup results:", foundProducts);
-
-            if (foundProducts.length === 0) {
-                showBulkAddError("No products found for the given manufacturer and part numbers.");
-                return;
-            }
-
-            // Add found products to the table
-            foundProducts.forEach(product => {
-                addDatabaseLineItem(product); // Add with default quantity 1, method Margin
-            });
-
-            // Clear textarea after successful add
-            bulkAddPartNumbersTextarea.value = "";
-
-            // Notify about missing items
-            const foundPartNumbers = new Set(foundProducts.map(p => p.itemNo));
-            const missingPartNumbers = partNumbers.filter(pn => !foundPartNumbers.has(pn));
-            if (missingPartNumbers.length > 0) {
-                showBulkAddError(`Note: Products added. Could not find items for part numbers: ${missingPartNumbers.join(", ")}`);
-            }
-
-        } catch (error) {
-            console.error("Error during bulk add:", error);
-            showBulkAddLoading(false);
-            showBulkAddError(`Error adding products: ${error.message}. Please try again.`);
-        }
-    }
-
-    // OLD Product Search Functions (Commented out for now)
-    /*
-    async function handleProductSearch() { ... }
-    function displayProductSearchResults(products) { ... }
-    function showProductSearchLoading(show) { ... }
-    function showProductSearchError(message) { ... }
-    function addProductLineItem(productData, quantity = 1, pricingMethod = "Margin", marginPercent = null, finalPrice = null, lineTotal = null) { ... }
-    */
-
-    async function generateOfferOutput(id, format) {
-        console.log(`DEBUG: generateOfferOutput called for ID: ${id}, format: ${format}`);
-        const token = getAuthToken();
-        if (!token) {
-            showError("Authentication error. Please log in again.");
-            return;
-        }
+        if (!token) { showError("Authentication error."); return; }
         showLoading(true);
-        showError("");
         try {
-            const response = await fetch(`/api/offers/${id}/${format}`, {
-                headers: { "Authorization": `Bearer ${token}` },
-            });
+            const response = await fetch(`/api/offers/${offerId}/${format}`, { headers: { "Authorization": `Bearer ${token}` } });
             showLoading(false);
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                throw new Error(errorData.message || `Error generating ${format.toUpperCase()}`);
             }
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.style.display = "none";
             a.href = url;
-            // Provide a filename
-            const filename = `offer_${id}.${format}`;
-            a.download = filename;
+            a.download = `offer_${offerId}.${format}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             a.remove();
-            console.log(`DEBUG: ${format.toUpperCase()} generated and download initiated for offer ${id}`);
         } catch (error) {
             console.error(`Error generating ${format}:`, error);
             showLoading(false);
-            showError(`Error generating ${format}: ${error.message}. Please try again.`);
+            showError(`Error generating ${format.toUpperCase()}: ${error.message}`);
         }
     }
 
     // --- Initialization ---
-    console.log("DEBUG: Starting initialization");
     if (checkAuth()) {
-        console.log("DEBUG: Authentication check passed");
-        setupEventListeners();
-        showOfferList(); // Show the list by default
+        if (offerListSection && offerFormSection) { // Only run offer logic if on offers page
+             console.log("DEBUG: Offers page detected, initializing.");
+            setupEventListeners();
+            showOfferList(); 
+        } else {
+            console.log("DEBUG: Not on offers page, or core elements missing.");
+        }
     } else {
-        console.error("DEBUG: Authentication check failed. Initialization stopped.");
+        // If checkAuth fails and redirects, this part might not be reached, which is fine.
+        console.log("DEBUG: Auth check failed, not initializing offer page logic.");
     }
-    console.log("DEBUG: Initialization complete");
 });
 
