@@ -1,17 +1,21 @@
 const mongoose = require("mongoose");
 
 const offerLineItemSchema = new mongoose.Schema({
+    isManual: {
+        type: Boolean,
+        default: false,
+        required: true
+    },
     product: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Product",
-        required: true,
+        required: function() { return !this.isManual; } // Conditionally required
     },
     quantity: {
         type: Number,
         required: true,
         min: 1,
     },
-    // Snapshot of product details at the time of adding to offer
     description: {
         type: String,
         required: true,
@@ -24,36 +28,43 @@ const offerLineItemSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    // Pricing details for the line item
-    basePrice: { // e.g., Winning price or list price before margin/conversion
+    basePrice: {
         type: Number,
         required: true,
+        default: 0 // Default for cases where it might not be set initially by calc
     },
-    baseCurrency: { // Currency of the basePrice
+    baseCurrency: {
         type: String,
         required: true,
+        default: "USD" // Default for cases
     },
     pricingMethod: {
         type: String,
-        enum: ["PriceList", "Margin"], // Method used for final price calculation
+        enum: ["PriceList", "Margin"],
         required: true,
     },
-    marginPercent: { // Applicable if pricingMethod is "Margin"
+    marginPercent: {
         type: Number,
-        default: 0,
+        default: null, // Allow null, especially if PriceList method
     },
-    finalPriceUSD: { // Calculated price per unit in USD
+    finalPriceUSD: {
         type: Number,
         required: true,
+        default: 0 // Default for cases
     },
-}, { _id: false }); // No separate _id for line items needed
+    lineTotalUSD: { // Added this field as it's calculated and useful
+        type: Number,
+        required: true,
+        default: 0
+    }
+}, { _id: false });
 
 const offerSchema = new mongoose.Schema(
     {
         offerId: {
             type: String,
             required: true,
-            unique: true, // Ensure uniqueness, generation logic will be in controller
+            unique: true,
             index: true,
         },
         client: {
@@ -72,21 +83,19 @@ const offerSchema = new mongoose.Schema(
         },
         terms: {
             type: String,
-            default: "Standard Terms: Payment due within 30 days. Delivery FOB Origin.", // Default terms
+            default: "Standard Terms: Payment due within 30 days. Delivery FOB Origin.",
+        },
+        // Add globalMarginPercent to the schema as it's used in calculations
+        globalMarginPercent: {
+            type: Number,
+            default: 0
         },
         lineItems: [offerLineItemSchema],
-        // Optional: Add fields for total offer value, etc.
-        // totalValueUSD: {
-        //     type: Number,
-        //     default: 0,
-        // },
     },
     {
-        timestamps: true, // Adds createdAt and updatedAt fields
+        timestamps: true,
     }
 );
-
-// Pre-save hook or method could be used to calculate totalValueUSD if needed
 
 const Offer = mongoose.model("Offer", offerSchema);
 
