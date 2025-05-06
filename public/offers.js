@@ -108,7 +108,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (row) row.remove();
                 }
             });
-            // Event delegation for pricing method change is now handled inside addLineItemRow for new rows
         }
     }
 
@@ -245,8 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
             clients.forEach(client => {
                 const option = document.createElement("option");
                 option.value = client._id;
-                // Corrected to use client.contactPersonName as per typical model, or fallback
-                option.textContent = `${client.companyName} (${client.contactName || client.contactPersonName || 'N/A'})`;
+                option.textContent = `${client.companyName} (${client.contactName || client.contactPersonName || client.clientNumber || 'N/A'})`;
                 const selectedClientId = selectedClientRef ? (selectedClientRef._id || selectedClientRef) : null;
                 if (selectedClientId && client._id === selectedClientId) {
                     option.selected = true;
@@ -280,7 +278,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // REWRITTEN addLineItemRow function (v4 - Grouped Pricing Cell)
     function addLineItemRow(itemData, isManual = true) {
         console.log(`DEBUG: addLineItemRow (v4) called. Is manual: ${isManual}. Item data:`, JSON.stringify(itemData));
         if (!lineItemsBody) {
@@ -309,14 +306,12 @@ document.addEventListener("DOMContentLoaded", () => {
         let lineTotalDisplay = "TBD";
         let inputsReadOnly = !isManual;
         let pricingControlsDisabled = isManual;
-        let marginInputInitiallyHidden = true; // Based on HTML example, margin input hidden by default
+        let marginInputInitiallyHidden = true; 
 
         if (isManual) {
-            console.log("DEBUG (v4): Manual item row setup.");
-            pricingMethodVal = "Margin"; // Default, but controls will be disabled
+            pricingMethodVal = "Margin"; 
             marginPercentVal = "";
         } else {
-            console.log("DEBUG (v4): Non-manual item row setup.");
             itemNoVal = productSource.itemNumber || "N/A";
             manufVal = productSource.manufacturer || "N/A";
             descVal = productSource.description || "N/A";
@@ -327,49 +322,41 @@ document.addEventListener("DOMContentLoaded", () => {
             if (pricingMethodVal === 'PriceList') {
                 marginPercentVal = ""; 
                 marginInputInitiallyHidden = true;
-            } else { // Margin method
+            } else { 
                 marginPercentVal = currentItemData.marginPercent !== undefined && currentItemData.marginPercent !== null 
                                    ? currentItemData.marginPercent 
                                    : (globalMarginInput ? globalMarginInput.value : "");
-                marginInputInitiallyHidden = false; // Show margin input if method is Margin
+                marginInputInitiallyHidden = false; 
             }
             lineTotalDisplay = currentItemData.lineTotalUSD !== undefined ? parseFloat(currentItemData.lineTotalUSD).toFixed(2) : 'TBD';
         }
 
-        console.log(`DEBUG (v4): Final values - ItemNo: ${itemNoVal}, Manuf: ${manufVal}, Desc: ${descVal}, Qty: ${qtyVal}, UnitPrice: ${unitPriceDisplay}, PricingMethod: ${pricingMethodVal}, Margin%: ${marginPercentVal}, LineTotal: ${lineTotalDisplay}`);
-
-        // Create cells meticulously - 8 columns total
-        // 1. Item No.
         let cell1 = row.insertCell();
         let input1 = document.createElement("input");
         input1.type = "text"; input1.className = "form-control form-control-sm item-number"; input1.value = itemNoVal;
         if (inputsReadOnly) input1.readOnly = true;
         input1.placeholder = "Item No."; cell1.appendChild(input1);
 
-        // 2. Manufacturer
         let cell2 = row.insertCell();
         let input2 = document.createElement("input");
         input2.type = "text"; input2.className = "form-control form-control-sm manufacturer"; input2.value = manufVal;
         if (inputsReadOnly) input2.readOnly = true;
         input2.placeholder = "Manuf."; cell2.appendChild(input2);
 
-        // 3. Description
         let cell3 = row.insertCell();
         let input3 = document.createElement("input");
         input3.type = "text"; input3.className = "form-control form-control-sm description"; input3.value = descVal;
         if (inputsReadOnly) input3.readOnly = true;
         input3.placeholder = "Description"; cell3.appendChild(input3);
 
-        // 4. Qty
         let cell4 = row.insertCell();
         let input4 = document.createElement("input");
         input4.type = "number"; input4.className = "form-control form-control-sm quantity"; input4.value = qtyVal;
         input4.min = "1"; input4.placeholder = "Qty"; cell4.appendChild(input4);
 
-        // 5. Pricing (Combined Cell for Method and Margin)
         let cell5_pricing = row.insertCell();
         const pricingControlsDiv = document.createElement("div");
-        pricingControlsDiv.className = "line-item-controls"; // As per HTML example
+        pricingControlsDiv.className = "line-item-controls";
 
         const pricingMethodSelect = document.createElement("select");
         pricingMethodSelect.className = "form-select form-select-sm pricing-method";
@@ -392,39 +379,34 @@ document.addEventListener("DOMContentLoaded", () => {
         if (pricingControlsDisabled || pricingMethodVal === 'PriceList') {
             marginPercentInput.disabled = true;
         }
-        if (marginInputInitiallyHidden && pricingMethodVal !== 'Margin') { // Hide if not margin method
+        if (marginInputInitiallyHidden && pricingMethodVal !== 'Margin') {
              marginPercentInput.style.display = 'none';
         }
         pricingControlsDiv.appendChild(marginPercentInput);
         cell5_pricing.appendChild(pricingControlsDiv);
         
-        // Add event listener for pricing method change to toggle margin input visibility/disabled state
         pricingMethodSelect.addEventListener('change', function() {
             const currentMarginInput = this.closest('.line-item-controls').querySelector('.margin-percent');
             if (currentMarginInput) {
                 const isPriceList = this.value === 'PriceList';
                 currentMarginInput.disabled = isPriceList;
-                currentMarginInput.style.display = isPriceList ? 'none' : 'inline-block'; // Or 'block' depending on layout
+                currentMarginInput.style.display = isPriceList ? 'none' : 'inline-block';
                 if (isPriceList) currentMarginInput.value = '';
             }
         });
-        // Trigger change to set initial state correctly after appending
-        if (!isManual) {
+        if (!isManual || !pricingControlsDisabled) {
             const event = new Event('change');
             pricingMethodSelect.dispatchEvent(event);
         }
 
-        // 6. Unit Price (USD) - Display only
         let cell6_unitPrice = row.insertCell();
         cell6_unitPrice.className = "unit-price";
         cell6_unitPrice.textContent = unitPriceDisplay;
 
-        // 7. Line Total (USD) - Display only
         let cell7_lineTotal = row.insertCell();
         cell7_lineTotal.className = "line-total";
         cell7_lineTotal.textContent = lineTotalDisplay;
 
-        // 8. Actions
         let cell8_action = row.insertCell();
         const removeButton = document.createElement("button");
         removeButton.type = "button"; removeButton.className = "btn btn-danger btn-sm remove-item-btn";
@@ -491,7 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 addLineItemRow({ product: product, quantity: 1, pricingMethod: 'Margin' }, false); 
             });
             showBulkAddStatus(`${productsFound.length} product(s) added.`, false);
-            bulkAddPartNumbersTextarea.value = ""; // Clear textarea after adding
+            bulkAddPartNumbersTextarea.value = "";
 
         } catch (error) {
             console.error("Error during bulk add:", error);
@@ -499,7 +481,6 @@ document.addEventListener("DOMContentLoaded", () => {
             showBulkAddStatus(`Error: ${error.message}`, true);
         }
     }
-
 
     async function saveOffer(event) {
         event.preventDefault();
@@ -519,33 +500,75 @@ document.addEventListener("DOMContentLoaded", () => {
         if (currentOfferId) {
             offerData._id = currentOfferId;
         }
+        
+        if (!offerData.client) {
+            showError("Please select a client.");
+            return;
+        }
 
-        const rows = lineItemsBody.querySelectorAll("tr");
-        rows.forEach(row => {
-            const itemNumberInput = row.querySelector(".item-number");
-            const descriptionInput = row.querySelector(".description");
-            const manufacturerInput = row.querySelector(".manufacturer");
-            const quantityInput = row.querySelector(".quantity");
-            const pricingMethodSelect = row.querySelector(".pricing-method");
-            const marginPercentInput = row.querySelector(".margin-percent");
-
-            const lineItem = {
-                itemNumber: itemNumberInput ? itemNumberInput.value : "",
-                description: descriptionInput ? descriptionInput.value : "",
-                manufacturer: manufacturerInput ? manufacturerInput.value : "", 
-                quantity: quantityInput ? parseInt(quantityInput.value) : 1,
-                isManual: row.dataset.isManual === "true",
-                product: row.dataset.isManual === "true" ? null : row.dataset.itemId 
-            };
-
-            if (!lineItem.isManual) {
-                lineItem.pricingMethod = pricingMethodSelect ? pricingMethodSelect.value : "Margin";
-                lineItem.marginPercent = marginPercentInput && !marginPercentInput.disabled ? parseFloat(marginPercentInput.value) : null;
+        try { 
+            const rows = lineItemsBody.querySelectorAll("tr");
+            if (rows.length === 0) {
+                showError("Please add at least one line item to the offer.");
+                return; // Stop save if no line items
             }
-            
-            console.log("DEBUG: Collected line item for save:", JSON.stringify(lineItem));
-            offerData.lineItems.push(lineItem);
-        });
+
+            rows.forEach(row => {
+                const itemNumberInput = row.querySelector(".item-number");
+                const descriptionInput = row.querySelector(".description");
+                const manufacturerInput = row.querySelector(".manufacturer");
+                const quantityInput = row.querySelector(".quantity");
+                const lineItemControls = row.querySelector(".line-item-controls");
+                const pricingMethodSelect = lineItemControls ? lineItemControls.querySelector(".pricing-method") : null;
+                const marginPercentInput = lineItemControls ? lineItemControls.querySelector(".margin-percent") : null;
+    
+                const isManualItem = row.dataset.isManual === "true";
+    
+                const lineItem = {
+                    itemNumber: itemNumberInput ? itemNumberInput.value.trim() : "",
+                    description: descriptionInput ? descriptionInput.value.trim() : "",
+                    manufacturer: manufacturerInput ? manufacturerInput.value.trim() : "",
+                    quantity: quantityInput && quantityInput.value.trim() !== "" ? parseInt(quantityInput.value) : 0, // Ensure quantity is a number
+                    isManual: isManualItem,
+                    product: isManualItem ? null : row.dataset.itemId 
+                };
+
+                // Validate essential text fields and quantity
+                if (!lineItem.itemNumber || !lineItem.description || !lineItem.manufacturer) {
+                    showError("All line items must have Item No., Description, and Manufacturer filled in.");
+                    throw new Error("Incomplete line item data: Missing item details.");
+                }
+                if (lineItem.quantity < 1) {
+                    showError("Line item quantity must be at least 1.");
+                    throw new Error("Invalid line item quantity: Must be 1 or more.");
+                }
+    
+                if (isManualItem) {
+                    lineItem.pricingMethod = "Margin"; 
+                    lineItem.marginPercent = null;    
+                } else {
+                    lineItem.pricingMethod = pricingMethodSelect ? pricingMethodSelect.value : "Margin";
+                    if (lineItem.pricingMethod === "Margin") {
+                        if (marginPercentInput && !marginPercentInput.disabled && marginPercentInput.value.trim() !== "") {
+                            lineItem.marginPercent = parseFloat(marginPercentInput.value);
+                        } else {
+                            lineItem.marginPercent = null; 
+                        }
+                    } else { 
+                        lineItem.marginPercent = null;
+                    }
+                }
+                
+                console.log("DEBUG: Collected line item for save:", JSON.stringify(lineItem));
+                offerData.lineItems.push(lineItem);
+            });
+
+        } catch (lineItemError) {
+            console.error("Error processing line items for save:", lineItemError.message);
+            showLoading(false);
+            // showError is called inside the loop for specific errors
+            return; 
+        }
         
         console.log("DEBUG: Offer data to save:", JSON.stringify(offerData));
 
@@ -650,9 +673,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- Initialization ---
     if (checkAuth()) {
-        if (offerListSection && offerFormSection) { // Only run offer logic if on offers page
+        if (offerListSection && offerFormSection) {
              console.log("DEBUG: Offers page detected, initializing.");
             setupEventListeners();
             showOfferList(); 
