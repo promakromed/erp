@@ -1,13 +1,14 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/productModel"); // Re-enabled model loading
 
-// @desc    Fetch all products (DIAGNOSTIC - DUMMY DATA, MODEL LOAD TEST)
+// @desc    Fetch all products (Restored Original Logic)
 // @route   GET /api/products
 // @access  Private (or Public depending on requirements)
 const getProducts = asyncHandler(async (req, res) => {
-  console.log("DIAGNOSTIC (Model Load Test): getProducts called");
-  // No actual Product.find({}) yet
-  res.json([{ itemNo: "DUMMY1", description: "Diagnostic Product 1 (Model Load Test)" }]);
+  console.log("DEBUG: getProducts called - Original Logic Restored");
+  // Add filtering/pagination logic here if needed
+  const products = await Product.find({});
+  res.json(products);
 });
 
 // @desc    Fetch single product by ID (DIAGNOSTIC - DUMMY DATA, MODEL LOAD TEST)
