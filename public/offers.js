@@ -1,7 +1,7 @@
-// /home/ubuntu/erp/public/offers.js (v10 - Fixed displayOffers to append table, clarified pricing logic)
+// /home/ubuntu/erp/public/offers.js (v11 - Fixed client dropdown contact display)
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v10): DOMContentLoaded event fired");
+    console.log("DEBUG (v11): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -34,10 +34,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentOfferId = null;
 
     function checkAuth() {
-        console.log("DEBUG (v10): checkAuth function called");
+        console.log("DEBUG (v11): checkAuth function called");
         const userInfo = JSON.parse(localStorage.getItem("userInfo"));
         if (!userInfo || !userInfo.token) {
-            console.error("DEBUG (v10): Token not found. Redirecting to login.");
+            console.error("DEBUG (v11): Token not found. Redirecting to login.");
             alert("Authentication token not found. Please log in again.");
             window.location.href = "/login.html";
             return false;
@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showError(message, element = errorMessage) {
-        console.log(`DEBUG (v10): showError called with message: ${message}`);
+        console.log(`DEBUG (v11): showError called with message: ${message}`);
         if (element) {
             element.textContent = message;
             element.style.display = message ? "block" : "none";
@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function setupEventListeners() {
-        console.log("DEBUG (v10): setupEventListeners function called");
+        console.log("DEBUG (v11): setupEventListeners function called");
         if (createOfferBtn) createOfferBtn.addEventListener("click", () => { currentOfferId = null; showOfferForm(); });
         if (offerForm) offerForm.addEventListener("submit", saveOffer);
         if (cancelOfferBtn) cancelOfferBtn.addEventListener("click", showOfferList);
@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (bulkAddBtn) {
             bulkAddBtn.addEventListener("click", handleBulkAddItems);
         } else {
-            console.log("DEBUG (v10): Could not find bulk-add-button during setupEventListeners");
+            console.log("DEBUG (v11): Could not find bulk-add-button during setupEventListeners");
         }
         if (generatePdfBtn) generatePdfBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "pdf"); });
         if (generateCsvBtn) generateCsvBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "csv"); });
@@ -106,7 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
         }
-        // Moved offerListContainer event listener here for view/edit/delete/pdf/csv to avoid re-adding it in displayOffers
         if (offerListContainer) {
             offerListContainer.addEventListener("click", (e) => {
                 const targetButton = e.target.closest("button");
@@ -122,10 +121,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadOffers() {
-        console.log("DEBUG (v10): loadOffers function called");
+        console.log("DEBUG (v11): loadOffers function called");
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
-        if (!offerListContainer) { console.error("DEBUG (v10): offerListContainer not found in loadOffers"); return; }
+        if (!offerListContainer) { console.error("DEBUG (v11): offerListContainer not found in loadOffers"); return; }
         offerListContainer.innerHTML = "";
         showError("");
         showLoading(true);
@@ -147,9 +146,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function displayOffers(offers) {
-        console.log("DEBUG (v10): displayOffers function called");
-        if (!offerListContainer) { console.error("DEBUG (v10): offerListContainer not found in displayOffers"); return; }
-        offerListContainer.innerHTML = ""; // Clear previous content
+        console.log("DEBUG (v11): displayOffers function called");
+        if (!offerListContainer) { console.error("DEBUG (v11): offerListContainer not found in displayOffers"); return; }
+        offerListContainer.innerHTML = ""; 
         if (!offers || offers.length === 0) {
             offerListContainer.innerHTML = "<p>No offers found.</p>";
             return;
@@ -183,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
             tbody.appendChild(tr);
         });
-        offerListContainer.appendChild(table); // CORRECTED: Ensure the new table is added to the DOM
+        offerListContainer.appendChild(table); 
     }
 
     function getStatusColor(status) {
@@ -198,7 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showOfferForm(offerData = null) {
-        console.log("DEBUG (v10): showOfferForm function called. Offer data:", offerData ? JSON.stringify(offerData).substring(0, 200) + "..." : null);
+        console.log("DEBUG (v11): showOfferForm function called. Offer data:", offerData ? JSON.stringify(offerData).substring(0, 200) + "..." : null);
         if (offerListSection) offerListSection.style.display = "none";
         if (offerFormSection) offerFormSection.style.display = "block";
         if (offerForm) offerForm.reset();
@@ -219,22 +218,22 @@ document.addEventListener("DOMContentLoaded", () => {
         showError("");
 
         if (offerData && offerData.lineItems) {
-            console.log("DEBUG (v10): Populating existing line items for offer:", offerData.lineItems);
+            console.log("DEBUG (v11): Populating existing line items for offer:", offerData.lineItems);
             offerData.lineItems.forEach(item => addLineItemRow(item, item.isManual === undefined ? false : item.isManual));
         }
     }
 
     function showOfferList() {
-        console.log("DEBUG (v10): showOfferList function called");
+        console.log("DEBUG (v11): showOfferList function called");
         if (offerListSection) offerListSection.style.display = "block";
         if (offerFormSection) offerFormSection.style.display = "none";
         loadOffers();
     }
 
     async function populateClientDropdown(selectedClientRef = null) {
-        console.log("DEBUG (v10): populateClientDropdown called with selectedClientRef:", selectedClientRef);
+        console.log("DEBUG (v11): populateClientDropdown called with selectedClientRef:", selectedClientRef);
         const token = getAuthToken();
-        if (!token || !clientSelect) { console.error("DEBUG (v10): Token or clientSelect not found"); return; }
+        if (!token || !clientSelect) { console.error("DEBUG (v11): Token or clientSelect not found"); return; }
         clientSelect.innerHTML = "<option value=\"\">Select Client...</option>"; 
         try {
             const response = await fetch("/api/clients", { headers: { "Authorization": `Bearer ${token}` } });
@@ -243,8 +242,8 @@ document.addEventListener("DOMContentLoaded", () => {
             clients.forEach(client => {
                 const option = document.createElement("option");
                 option.value = client._id;
-                // Use client.clientName for the contact person part as per your model
-                const contactInfo = client.clientName || client.contactPersonName || client.clientNumber || "N/A"; 
+                // CORRECTED: Use client.clientName (main contact) or client.contactPerson (secondary) from the model
+                const contactInfo = client.clientName || client.contactPerson || "N/A"; 
                 option.textContent = `${client.companyName} (${contactInfo})`;
                 const selectedClientId = selectedClientRef ? (selectedClientRef._id || selectedClientRef) : null;
                 if (selectedClientId && client._id === selectedClientId) {
@@ -259,9 +258,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function populateManufacturerDropdown() {
-        console.log("DEBUG (v10): populateManufacturerDropdown function called");
+        console.log("DEBUG (v11): populateManufacturerDropdown function called");
         const token = getAuthToken();
-        if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG (v10): Token or bulkAddManufacturerSelect not found"); return; }
+        if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG (v11): Token or bulkAddManufacturerSelect not found"); return; }
         bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
         try {
             const response = await fetch("/api/products/manufacturers", { headers: { "Authorization": `Bearer ${token}` } });
@@ -280,9 +279,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function addLineItemRow(itemData, isManual = true) {
-        console.log(`DEBUG (v10): addLineItemRow called. Is manual: ${isManual}. Item data:`, itemData ? JSON.stringify(itemData).substring(0,200) + "..." : "undefined");
+        console.log(`DEBUG (v11): addLineItemRow called. Is manual: ${isManual}. Item data:`, itemData ? JSON.stringify(itemData).substring(0,200) + "..." : "undefined");
         if (!lineItemsBody) {
-            console.error("CRITICAL (v10): lineItemsBody not found. Cannot add row.");
+            console.error("CRITICAL (v11): lineItemsBody not found. Cannot add row.");
             return;
         }
 
@@ -299,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 productSource = currentItemData; 
             }
         }
-        console.log(`DEBUG (v10): Product source for row:`, productSource ? JSON.stringify(productSource).substring(0,200) + "..." : "{}");
+        console.log(`DEBUG (v11): Product source for row:`, productSource ? JSON.stringify(productSource).substring(0,200) + "..." : "{}");
 
         row.dataset.itemId = !isManual && productSource && productSource._id ? productSource._id : (currentItemData._id || `manual_${Date.now()}`);
         row.dataset.isManual = String(isManual);
@@ -412,11 +411,11 @@ document.addEventListener("DOMContentLoaded", () => {
         removeBtn.innerHTML = "&times;";
         removeBtn.title = "Remove Item";
         actionCell.appendChild(removeBtn);
-        console.log(`DEBUG (v10): Row added for itemNo: ${itemNoVal}, isManual: ${isManual}`);
+        console.log(`DEBUG (v11): Row added for itemNo: ${itemNoVal}, isManual: ${isManual}`);
     }
 
     async function handleBulkAddItems() {
-        console.log("DEBUG (v10): handleBulkAddItems function called");
+        console.log("DEBUG (v11): handleBulkAddItems function called");
         const token = getAuthToken();
         const manufacturer = bulkAddManufacturerSelect.value;
         const partNumbersText = bulkAddPartNumbersTextarea.value.trim();
@@ -474,7 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
         } catch (error) {
-            console.error("Error in bulk add (v10):", error);
+            console.error("Error in bulk add (v11):", error);
             showLoading(false);
             if (error instanceof SyntaxError && error.message.includes("Unexpected token")) {
                 showBulkAddStatus("Error: Could not process response from server (unexpected format). Please check server logs.", true);
@@ -486,7 +485,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function saveOffer(event) {
         event.preventDefault();
-        console.log("DEBUG (v10): saveOffer function called");
+        console.log("DEBUG (v11): saveOffer function called");
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
 
@@ -544,7 +543,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 marginPercent: marginPercent,
             };
             lineItems.push(lineItem);
-            console.log("DEBUG (v10): Collected line item for save:", JSON.stringify(lineItem));
+            console.log("DEBUG (v11): Collected line item for save:", JSON.stringify(lineItem));
         });
 
         if (!formIsValid) return;
@@ -562,7 +561,7 @@ document.addEventListener("DOMContentLoaded", () => {
             globalMarginPercent,
             lineItems,
         };
-        console.log("DEBUG (v10): Offer data to save:", JSON.stringify(offerData));
+        console.log("DEBUG (v11): Offer data to save:", JSON.stringify(offerData));
 
         const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
         const method = currentOfferId ? "PUT" : "POST";
@@ -578,14 +577,14 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseText = await response.text(); 
-            console.log("DEBUG (v10): Save response text:", responseText.substring(0, 500)); 
+            console.log("DEBUG (v11): Save response text:", responseText.substring(0, 500)); 
 
             if (!response.ok) {
                 let errorData = { message: `Server error: ${response.status}` };
                 try {
                     errorData = JSON.parse(responseText); 
                 } catch (e) {
-                    console.warn(`Could not parse error JSON from save offer (v10): ${e.message}`);
+                    console.warn(`Could not parse error JSON from save offer (v11): ${e.message}`);
                     if (responseText.toLowerCase().includes("internal server error")) {
                          errorData.message = "Internal Server Error. Please check server logs.";
                     } else if (responseText.toLowerCase().includes("bad request")) {
@@ -601,20 +600,20 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 savedOfferData = JSON.parse(responseText);
             } catch (e) {
-                console.warn("Could not parse success JSON from save offer (v10), but response was OK.");
+                console.warn("Could not parse success JSON from save offer (v11), but response was OK.");
             }
 
             alert(savedOfferData.message || "Offer saved successfully!");
             showOfferList();
         } catch (error) {
-            console.error(`Error saving offer (v10): ${error.name}: ${error.message}`);
+            console.error(`Error saving offer (v11): ${error.name}: ${error.message}`);
             showLoading(false);
             showError(`Error saving offer: ${error.message}. Please try again.`);
         }
     }
 
     async function loadOfferForEditing(id) {
-        console.log(`DEBUG (v10): loadOfferForEditing called for ID: ${id}`);
+        console.log(`DEBUG (v11): loadOfferForEditing called for ID: ${id}`);
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
         showLoading(true);
@@ -637,7 +636,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function deleteOffer(id) {
-        console.log(`DEBUG (v10): deleteOffer called for ID: ${id}`);
+        console.log(`DEBUG (v11): deleteOffer called for ID: ${id}`);
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
         showLoading(true);
@@ -663,7 +662,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function generateOfferOutput(id, format) {
-        console.log(`DEBUG (v10): generateOfferOutput called for ID: ${id}, Format: ${format}`);
+        console.log(`DEBUG (v11): generateOfferOutput called for ID: ${id}, Format: ${format}`);
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
         showLoading(true);
