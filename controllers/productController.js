@@ -1,3 +1,6 @@
+const asyncHandler = require("express-async-handler");
+const Product = require("../models/productModel");
+
 // @desc    Fetch all products (Restored Original Logic)
 // @route   GET /api/products
 // @access  Private (or Public depending on requirements)
