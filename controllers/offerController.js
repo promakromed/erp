@@ -59,9 +59,8 @@ const calculateLineItemPrice = async (itemData, globalMarginPercent, customerPri
         throw new Error("Internal error: Product ID missing for database item.");
     }
 
-    // Fetch product with supplierOffers populated
     const productDetails = await Product.findById(itemData.productId)
-        .populate('supplierOffers') // Populate supplierOffers
+        .populate('supplierOffers')
         .select("itemNo description manufacturer basePrice baseCurrency supplierOffers");
 
     if (!productDetails) {
@@ -69,79 +68,91 @@ const calculateLineItemPrice = async (itemData, globalMarginPercent, customerPri
         throw new Error(`Product details not found for item ${itemData.itemNo || itemData.productId}.`);
     }
 
-    let effectiveBasePrice = productDetails.basePrice || 0;
-    let effectiveBaseCurrency = productDetails.baseCurrency || 'USD';
+    let sourceBasePrice = 0; 
+    let sourceCurrency = 'USD'; 
+    let basePriceUSD_for_margin_calc = 0; 
+
     const pricingMethod = itemData.pricingMethod || 'Margin';
 
-    // 1. Check Price List if applicable
+    // Priority 1: Customer Price List
     if (pricingMethod === "PriceList" && customerPriceList) {
-        const priceListItem = customerPriceList.items.find(
-            plItem => plItem.itemNo === productDetails.itemNo
-        );
+        const priceListItem = customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo);
         if (priceListItem) {
-            effectiveBasePrice = priceListItem.price;
-            effectiveBaseCurrency = priceListItem.currency || 'USD';
-            console.log(`DEBUG: Using Price List price for ${productDetails.itemNo}: ${effectiveBasePrice} ${effectiveBaseCurrency}`);
+            sourceBasePrice = priceListItem.price;
+            sourceCurrency = priceListItem.currency || 'USD';
+            console.log(`DEBUG: Using Price List for ${productDetails.itemNo}: ${sourceBasePrice} ${sourceCurrency}`);
+            const rate = await getExchangeRate(sourceCurrency, "USD");
+            basePriceUSD_for_margin_calc = sourceBasePrice * rate;
+            if (sourceCurrency !== "USD") {
+                basePriceUSD_for_margin_calc *= 1.03; // Apply 3% currency protection
+                console.log(`DEBUG: Applied 3% protection to Price List price. USD for margin: ${basePriceUSD_for_margin_calc.toFixed(2)}`);
+            }
         } else {
-            console.warn(`Product ${productDetails.itemNo} not found in customer price list. Looking for other price sources.`);
+            console.warn(`Product ${productDetails.itemNo} not found in customer price list. Proceeding to other sources.`);
         }
     }
 
-    // 2. If Price List not used or product not found in it, and product's own basePrice is 0 or not set,
-    //    try to use the lowest supplier offer price.
-    if (pricingMethod !== "PriceList" || (pricingMethod === "PriceList" && !customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo))) {
-        if (!effectiveBasePrice || effectiveBasePrice === 0) {
-            console.log(`DEBUG: Product ${productDetails.itemNo} basePrice is 0 or not set. Checking supplierOffers.`);
-            if (productDetails.supplierOffers && productDetails.supplierOffers.length > 0) {
-                let lowestSupplierPriceUSD = Infinity;
-                let chosenSupplierOfferBasePrice = 0;
-                let chosenSupplierOfferCurrency = 'USD';
+    // Priority 2: Product's own basePrice (if not found in Price List or if method is Margin, and basePriceUSD_for_margin_calc is still 0)
+    if (basePriceUSD_for_margin_calc === 0 && productDetails.basePrice && productDetails.basePrice > 0) {
+        sourceBasePrice = productDetails.basePrice;
+        sourceCurrency = productDetails.baseCurrency || 'USD';
+        console.log(`DEBUG: Using Product's own basePrice for ${productDetails.itemNo}: ${sourceBasePrice} ${sourceCurrency}`);
+        const rate = await getExchangeRate(sourceCurrency, "USD");
+        basePriceUSD_for_margin_calc = sourceBasePrice * rate;
+        if (sourceCurrency !== "USD") {
+            basePriceUSD_for_margin_calc *= 1.03; // Apply 3% currency protection
+            console.log(`DEBUG: Applied 3% protection to Product's own basePrice. USD for margin: ${basePriceUSD_for_margin_calc.toFixed(2)}`);
+        }
+    }
 
-                for (const offer of productDetails.supplierOffers) {
-                    if (offer.price && offer.currency) {
-                        const supplierRate = await getExchangeRate(offer.currency, "USD");
-                        const supplierPriceUSD = offer.price * supplierRate;
-                        if (supplierPriceUSD < lowestSupplierPriceUSD) {
-                            lowestSupplierPriceUSD = supplierPriceUSD;
-                            chosenSupplierOfferBasePrice = offer.price; // Store the original supplier price
-                            chosenSupplierOfferCurrency = offer.currency; // Store the original supplier currency
-                        }
+    // Priority 3: Lowest Supplier Offer (if basePriceUSD_for_margin_calc is still 0)
+    if (basePriceUSD_for_margin_calc === 0) {
+        console.log(`DEBUG: No Price List or Product basePrice for ${productDetails.itemNo}. Checking supplierOffers.`);
+        if (productDetails.supplierOffers && productDetails.supplierOffers.length > 0) {
+            let lowestSupplierPriceUSDWithProtection = Infinity;
+            let tempSourceBasePrice = 0;
+            let tempSourceCurrency = 'USD';
+
+            for (const supOffer of productDetails.supplierOffers) {
+                if (supOffer.originalPrice && supOffer.originalCurrency) { 
+                    const supplierRate = await getExchangeRate(supOffer.originalCurrency, "USD");
+                    const supplierPriceInUSD = supOffer.originalPrice * supplierRate;
+                    let currentSupplierPriceUSDWithProtection = supplierPriceInUSD;
+                    if (supOffer.originalCurrency !== "USD") {
+                        currentSupplierPriceUSDWithProtection *= 1.03; // Apply 3% currency protection
+                    }
+
+                    if (currentSupplierPriceUSDWithProtection < lowestSupplierPriceUSDWithProtection) {
+                        lowestSupplierPriceUSDWithProtection = currentSupplierPriceUSDWithProtection;
+                        tempSourceBasePrice = supOffer.originalPrice;
+                        tempSourceCurrency = supOffer.originalCurrency;
                     }
                 }
-
-                if (lowestSupplierPriceUSD !== Infinity) {
-                    effectiveBasePrice = chosenSupplierOfferBasePrice; // Use the original price from the chosen supplier offer
-                    effectiveBaseCurrency = chosenSupplierOfferCurrency; // Use the original currency from the chosen supplier offer
-                    console.log(`DEBUG: Using lowest supplier offer for ${productDetails.itemNo}: ${effectiveBasePrice} ${effectiveBaseCurrency} (which is ${lowestSupplierPriceUSD} USD)`);
-                } else {
-                    console.warn(`DEBUG: No valid prices found in supplierOffers for ${productDetails.itemNo}. Base price remains 0.`);
-                    effectiveBasePrice = 0; // Ensure it's 0 if no supplier price found
-                    effectiveBaseCurrency = 'USD';
-                }
-            } else {
-                console.warn(`DEBUG: No supplierOffers for ${productDetails.itemNo} and basePrice is 0. Base price remains 0.`);
-                effectiveBasePrice = 0; // Ensure it's 0 if no supplier offers
-                effectiveBaseCurrency = 'USD';
             }
+
+            if (lowestSupplierPriceUSDWithProtection !== Infinity) {
+                sourceBasePrice = tempSourceBasePrice;
+                sourceCurrency = tempSourceCurrency;
+                basePriceUSD_for_margin_calc = lowestSupplierPriceUSDWithProtection;
+                console.log(`DEBUG: Using lowest supplier offer for ${productDetails.itemNo}: Original ${sourceBasePrice} ${sourceCurrency}. USD for margin (with protection): ${basePriceUSD_for_margin_calc.toFixed(2)}`);
+            } else {
+                console.warn(`DEBUG: No valid prices found in supplierOffers for ${productDetails.itemNo}. Price remains 0.`);
+            }
+        } else {
+            console.warn(`DEBUG: No supplierOffers for ${productDetails.itemNo}. Price remains 0.`);
         }
     }
 
-    // 3. Convert effective base price to USD (if not already from lowest supplier USD calculation)
-    const rate = await getExchangeRate(effectiveBaseCurrency, "USD");
-    const basePriceUSD = effectiveBasePrice * rate;
-
-    // 4. Apply Margin if applicable
-    let finalPricePerUnitUSD = basePriceUSD;
+    let finalPricePerUnitUSD = basePriceUSD_for_margin_calc;
     if (pricingMethod === "Margin") {
         const marginToApply = (itemData.marginPercent !== null && itemData.marginPercent >= 0)
             ? itemData.marginPercent
             : (globalMarginPercent !== null && globalMarginPercent >= 0 ? globalMarginPercent : 0);
 
-        finalPricePerUnitUSD = basePriceUSD * (1 + (marginToApply / 100));
-        console.log(`DEBUG: Applying margin for ${productDetails.itemNo}: BaseUSD=${basePriceUSD}, Margin=${marginToApply}%, Final=${finalPricePerUnitUSD}`);
+        finalPricePerUnitUSD = basePriceUSD_for_margin_calc * (1 + (marginToApply / 100));
+        console.log(`DEBUG: Applying margin for ${productDetails.itemNo}: BaseUSD_for_calc=${basePriceUSD_for_margin_calc.toFixed(2)}, Margin=${marginToApply}%, Final=${finalPricePerUnitUSD.toFixed(2)}`);
     }
 
-    // 5. Calculate line total
     const lineTotalUSD = finalPricePerUnitUSD * (itemData.quantity || 0);
 
     return {
@@ -150,8 +161,8 @@ const calculateLineItemPrice = async (itemData, globalMarginPercent, customerPri
         itemNo: productDetails.itemNo,
         description: productDetails.description,
         manufacturer: productDetails.manufacturer,
-        basePrice: effectiveBasePrice, // Store the determined base price (could be from product, price list, or supplier)
-        baseCurrency: effectiveBaseCurrency, // Store its currency
+        basePrice: sourceBasePrice, 
+        baseCurrency: sourceCurrency, 
         pricingMethod: pricingMethod,
         marginPercent: (pricingMethod === 'Margin' && itemData.marginPercent !== null) ? itemData.marginPercent : null,
         finalPriceUSD: finalPricePerUnitUSD,
@@ -398,7 +409,7 @@ const createOffer = asyncHandler(async (req, res) => {
     }
 
     let customerPriceList = null;
-    // if (clientExists.priceListId) { // Assuming client model might have a priceListId
+    // if (clientExists.priceListId) { 
     //     customerPriceList = await CustomerPriceList.findById(clientExists.priceListId);
     // }
 
@@ -418,7 +429,7 @@ const createOffer = asyncHandler(async (req, res) => {
         status,
         globalMarginPercent,
         lineItems: processedLineItems,
-        user: req.user._id, // Assuming user is attached by auth middleware
+        user: req.user._id, 
     });
 
     const createdOffer = await offer.save();
@@ -443,8 +454,6 @@ const updateOffer = asyncHandler(async (req, res) => {
         throw new Error("Offer not found");
     }
 
-    // Add authorization check if needed: if (offer.user.toString() !== req.user._id.toString()) ...
-
     if (clientId) {
         const clientExists = await Client.findById(clientId);
         if (!clientExists) {
@@ -455,7 +464,7 @@ const updateOffer = asyncHandler(async (req, res) => {
     }
 
     let customerPriceList = null;
-    // if (offer.client && offer.client.priceListId) { // Assuming client model might have a priceListId
+    // if (offer.client && offer.client.priceListId) { 
     //     customerPriceList = await CustomerPriceList.findById(offer.client.priceListId);
     // }
 
@@ -486,8 +495,7 @@ const deleteOffer = asyncHandler(async (req, res) => {
             res.status(400);
             throw new Error("Only Draft offers can be deleted.");
         }
-        // Add authorization check if needed
-        await offer.deleteOne(); // Changed from offer.remove()
+        await offer.deleteOne(); 
         res.json({ message: "Offer removed" });
     } else {
         res.status(404);
@@ -509,7 +517,6 @@ const generateOfferPdf = asyncHandler(async (req, res) => {
         throw new Error("Offer not found");
     }
 
-    // Company details (replace with actual data source if needed)
     const companyDetails = {
         name: "PRO MAKROMED Sağlık Ürünleri",
         address: "Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye",
@@ -527,7 +534,7 @@ const generateOfferPdf = asyncHandler(async (req, res) => {
 // GET /api/offers/:id/csv
 const generateOfferCsv = asyncHandler(async (req, res) => {
     const offer = await Offer.findById(req.params.id)
-        .populate("client", "companyName") // Only need companyName for CSV client
+        .populate("client", "companyName") 
         .populate({
             path: 'lineItems.productId',
             select: 'itemNo description manufacturer basePrice baseCurrency supplierOffers'
