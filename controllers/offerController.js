@@ -5,7 +5,7 @@ const Product = require("../models/productModel");
 const CustomerPriceList = require("../models/customerPriceListModel");
 const mongoose = require("mongoose");
 const PDFDocument = require("pdfkit");
-const { Parser } = require("@json2csv/plainjs"); // Use plainjs version for sync
+const { Parser } = require("@json2csv/plainjs");
 const { PassThrough } = require("stream");
 const fs = require("fs");
 const path = require("path");
@@ -35,25 +35,21 @@ const generateNextOfferId = async () => {
     return `${prefix}${nextNum.toString().padStart(3, '0')}`;
 };
 
-// Placeholder for exchange rate - replace with a real API call in production
 const getExchangeRate = async (fromCurrency, toCurrency) => {
     if (fromCurrency === toCurrency) return 1;
-    // Add more realistic rates or integrate an API
     if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
     if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
     console.warn(`Exchange rate not found for ${fromCurrency} to ${toCurrency}, using 1`);
     return 1;
 };
 
-// Enhanced Price Calculation Logic
 const calculateLineItemPrice = async (itemData, globalMarginPercent, customerPriceList) => {
     if (itemData.itemType === "manual") {
-        // Manual items - pricing TBD, return 0 for now
         return {
             ...itemData,
             finalPriceUSD: 0,
             lineTotalUSD: 0,
-            basePrice: 0, // Ensure these are set
+            basePrice: 0,
             baseCurrency: 'USD'
         };
     }
@@ -63,7 +59,11 @@ const calculateLineItemPrice = async (itemData, globalMarginPercent, customerPri
         throw new Error("Internal error: Product ID missing for database item.");
     }
 
-    const productDetails = await Product.findById(itemData.productId).select("itemNo description manufacturer basePrice baseCurrency");
+    // Fetch product with supplierOffers populated
+    const productDetails = await Product.findById(itemData.productId)
+        .populate('supplierOffers') // Populate supplierOffers
+        .select("itemNo description manufacturer basePrice baseCurrency supplierOffers");
+
     if (!productDetails) {
         console.error(`Product not found for ID: ${itemData.productId}`);
         throw new Error(`Product details not found for item ${itemData.itemNo || itemData.productId}.`);
@@ -71,32 +71,68 @@ const calculateLineItemPrice = async (itemData, globalMarginPercent, customerPri
 
     let effectiveBasePrice = productDetails.basePrice || 0;
     let effectiveBaseCurrency = productDetails.baseCurrency || 'USD';
-    const pricingMethod = itemData.pricingMethod || 'Margin'; // Default to Margin if not specified
+    const pricingMethod = itemData.pricingMethod || 'Margin';
 
     // 1. Check Price List if applicable
     if (pricingMethod === "PriceList" && customerPriceList) {
         const priceListItem = customerPriceList.items.find(
-            plItem => plItem.itemNo === productDetails.itemNo // Assuming product.itemNo is reliable
-            // Add manufacturer check if needed: && plItem.manufacturer === productDetails.manufacturer
+            plItem => plItem.itemNo === productDetails.itemNo
         );
         if (priceListItem) {
             effectiveBasePrice = priceListItem.price;
             effectiveBaseCurrency = priceListItem.currency || 'USD';
             console.log(`DEBUG: Using Price List price for ${productDetails.itemNo}: ${effectiveBasePrice} ${effectiveBaseCurrency}`);
         } else {
-            console.warn(`Product ${productDetails.itemNo} not found in customer price list. Using default base price.`);
-            // Keep productDetails.basePrice and baseCurrency
+            console.warn(`Product ${productDetails.itemNo} not found in customer price list. Looking for other price sources.`);
         }
     }
 
-    // 2. Convert base price to USD
+    // 2. If Price List not used or product not found in it, and product's own basePrice is 0 or not set,
+    //    try to use the lowest supplier offer price.
+    if (pricingMethod !== "PriceList" || (pricingMethod === "PriceList" && !customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo))) {
+        if (!effectiveBasePrice || effectiveBasePrice === 0) {
+            console.log(`DEBUG: Product ${productDetails.itemNo} basePrice is 0 or not set. Checking supplierOffers.`);
+            if (productDetails.supplierOffers && productDetails.supplierOffers.length > 0) {
+                let lowestSupplierPriceUSD = Infinity;
+                let chosenSupplierOfferBasePrice = 0;
+                let chosenSupplierOfferCurrency = 'USD';
+
+                for (const offer of productDetails.supplierOffers) {
+                    if (offer.price && offer.currency) {
+                        const supplierRate = await getExchangeRate(offer.currency, "USD");
+                        const supplierPriceUSD = offer.price * supplierRate;
+                        if (supplierPriceUSD < lowestSupplierPriceUSD) {
+                            lowestSupplierPriceUSD = supplierPriceUSD;
+                            chosenSupplierOfferBasePrice = offer.price; // Store the original supplier price
+                            chosenSupplierOfferCurrency = offer.currency; // Store the original supplier currency
+                        }
+                    }
+                }
+
+                if (lowestSupplierPriceUSD !== Infinity) {
+                    effectiveBasePrice = chosenSupplierOfferBasePrice; // Use the original price from the chosen supplier offer
+                    effectiveBaseCurrency = chosenSupplierOfferCurrency; // Use the original currency from the chosen supplier offer
+                    console.log(`DEBUG: Using lowest supplier offer for ${productDetails.itemNo}: ${effectiveBasePrice} ${effectiveBaseCurrency} (which is ${lowestSupplierPriceUSD} USD)`);
+                } else {
+                    console.warn(`DEBUG: No valid prices found in supplierOffers for ${productDetails.itemNo}. Base price remains 0.`);
+                    effectiveBasePrice = 0; // Ensure it's 0 if no supplier price found
+                    effectiveBaseCurrency = 'USD';
+                }
+            } else {
+                console.warn(`DEBUG: No supplierOffers for ${productDetails.itemNo} and basePrice is 0. Base price remains 0.`);
+                effectiveBasePrice = 0; // Ensure it's 0 if no supplier offers
+                effectiveBaseCurrency = 'USD';
+            }
+        }
+    }
+
+    // 3. Convert effective base price to USD (if not already from lowest supplier USD calculation)
     const rate = await getExchangeRate(effectiveBaseCurrency, "USD");
     const basePriceUSD = effectiveBasePrice * rate;
 
-    // 3. Apply Margin if applicable
+    // 4. Apply Margin if applicable
     let finalPricePerUnitUSD = basePriceUSD;
     if (pricingMethod === "Margin") {
-        // Use per-item margin if provided and valid, otherwise use global margin if valid
         const marginToApply = (itemData.marginPercent !== null && itemData.marginPercent >= 0)
             ? itemData.marginPercent
             : (globalMarginPercent !== null && globalMarginPercent >= 0 ? globalMarginPercent : 0);
@@ -105,71 +141,56 @@ const calculateLineItemPrice = async (itemData, globalMarginPercent, customerPri
         console.log(`DEBUG: Applying margin for ${productDetails.itemNo}: BaseUSD=${basePriceUSD}, Margin=${marginToApply}%, Final=${finalPricePerUnitUSD}`);
     }
 
-    // 4. Calculate line total
+    // 5. Calculate line total
     const lineTotalUSD = finalPricePerUnitUSD * (itemData.quantity || 0);
 
-    // Return the updated item data with calculated prices
     return {
         ...itemData,
-        productId: productDetails._id, // Ensure productId is set
+        productId: productDetails._id,
         itemNo: productDetails.itemNo,
         description: productDetails.description,
         manufacturer: productDetails.manufacturer,
-        basePrice: productDetails.basePrice, // Store original base price for reference
-        baseCurrency: productDetails.baseCurrency,
+        basePrice: effectiveBasePrice, // Store the determined base price (could be from product, price list, or supplier)
+        baseCurrency: effectiveBaseCurrency, // Store its currency
         pricingMethod: pricingMethod,
-        marginPercent: (pricingMethod === 'Margin' && itemData.marginPercent !== null) ? itemData.marginPercent : null, // Store only if explicitly set
+        marginPercent: (pricingMethod === 'Margin' && itemData.marginPercent !== null) ? itemData.marginPercent : null,
         finalPriceUSD: finalPricePerUnitUSD,
         lineTotalUSD: lineTotalUSD,
     };
 };
 
-// --- PDF Generation Helper (No changes needed here for calculation) ---
+
 const generatePdfStream = async (offer, companyDetails) => {
-    // ... (Existing PDF generation code remains the same)
-    // It now relies on offer.lineItems having finalPriceUSD calculated
     const doc = new PDFDocument({ margin: 50 });
     const stream = new PassThrough();
     doc.pipe(stream);
 
-    // --- Font Registration ---
     let currentFont = fallbackFont;
     let currentBoldFont = fallbackBoldFont;
     try {
         if (fs.existsSync(primaryFontPath)) {
             doc.registerFont('DejaVuSans', primaryFontPath);
             currentFont = 'DejaVuSans';
-            console.log("DEBUG: Registered DejaVuSans font.");
-        } else {
-            console.warn(`WARN: Font file not found at ${primaryFontPath}, using fallback ${fallbackFont}.`);
         }
         if (fs.existsSync(boldFontPath)) {
             doc.registerFont('DejaVuSans-Bold', boldFontPath);
             currentBoldFont = 'DejaVuSans-Bold';
-            console.log("DEBUG: Registered DejaVuSans-Bold font.");
-        } else {
-            console.warn(`WARN: Font file not found at ${boldFontPath}, using fallback ${fallbackBoldFont}.`);
         }
     } catch (fontError) {
         console.error("ERROR: Failed to register fonts:", fontError);
     }
     doc.font(currentFont);
 
-    // --- Logo (from local file) --- 
     let logoAdded = false;
     try {
         if (fs.existsSync(localLogoPath)) {
             doc.image(localLogoPath, 50, 45, { width: 100 });
             logoAdded = true;
-            console.log("DEBUG: Added local logo to PDF.");
-        } else {
-            console.warn(`WARN: Local logo file not found at ${localLogoPath}. Skipping logo in PDF.`);
         }
     } catch (imgError) {
         console.error("Error embedding local logo:", imgError.message);
     }
 
-    // --- Company Details ---
     const companyTopMargin = logoAdded ? 50 : 50;
     doc.font(currentFont).fontSize(14).text(companyDetails.name, { align: 'right' });
     doc.fontSize(9).text(companyDetails.address, { align: 'right' });
@@ -177,7 +198,6 @@ const generatePdfStream = async (offer, companyDetails) => {
     doc.text(companyDetails.email, { align: 'right' });
     doc.moveDown(2);
 
-    // --- Offer Header ---
     const headerStartY = doc.y;
     doc.font(currentFont).fontSize(18).text(`Offer: ${offer.offerId}`, 50, headerStartY, { align: 'left' });
     doc.fontSize(10).text(`Date: ${offer.createdAt.toLocaleDateString('en-GB')}`, 50, headerStartY + 25);
@@ -186,7 +206,6 @@ const generatePdfStream = async (offer, companyDetails) => {
     }
     doc.moveDown(3);
 
-    // --- Client Details ---
     const clientBoxWidth = 250;
     doc.font(currentFont).fontSize(10).text("Bill To:", 50, doc.y);
     doc.rect(50, doc.y + 2, clientBoxWidth, 70).stroke();
@@ -200,7 +219,6 @@ const generatePdfStream = async (offer, companyDetails) => {
     doc.y = doc.y + 75;
     doc.moveDown(2);
 
-    // --- Line Items Table ---
     doc.font(currentFont).fontSize(12).text("Items:", { underline: true });
     doc.moveDown();
 
@@ -229,7 +247,6 @@ const generatePdfStream = async (offer, companyDetails) => {
 
     let totalOfferValue = 0;
     offer.lineItems.forEach(item => {
-        // Use the pre-calculated lineTotalUSD
         const lineTotal = item.lineTotalUSD || 0;
         totalOfferValue += lineTotal;
         const y = doc.y;
@@ -260,7 +277,6 @@ const generatePdfStream = async (offer, companyDetails) => {
         doc.font(currentFont);
     }
 
-    // --- Offer Total ---
     doc.moveTo(qtyCol, doc.y + 5).lineTo(doc.page.width - itemCol, doc.y + 5).strokeColor('#cccccc').stroke();
     doc.moveDown();
     doc.font(currentBoldFont).fontSize(10);
@@ -269,7 +285,6 @@ const generatePdfStream = async (offer, companyDetails) => {
     doc.font(currentFont);
     doc.moveDown(2);
 
-    // --- Terms & Conditions ---
     const termsHeight = doc.heightOfString(offer.terms || "", { width: doc.page.width - 100 });
     if (doc.y + termsHeight + 20 > doc.page.height - tableBottomMargin) {
         doc.addPage();
@@ -283,7 +298,6 @@ const generatePdfStream = async (offer, companyDetails) => {
     return stream;
 };
 
-// --- CSV Generation Helper ---
 const generateCsvString = async (offer) => {
     const fields = [
         { label: 'Offer ID', value: 'offerId' },
@@ -300,7 +314,6 @@ const generateCsvString = async (offer) => {
         { label: 'Margin %', value: 'lineItems.marginPercent' },
     ];
 
-    // Prepare data for CSV - flatten line items
     const data = offer.lineItems.map(item => ({
         offerId: offer.offerId,
         client: { companyName: offer.client?.companyName || 'N/A' },
@@ -318,7 +331,7 @@ const generateCsvString = async (offer) => {
         }
     }));
 
-    if (data.length === 0) { // Handle offers with no items
+    if (data.length === 0) {
         data.push({
             offerId: offer.offerId,
             client: { companyName: offer.client?.companyName || 'N/A' },
@@ -331,12 +344,9 @@ const generateCsvString = async (offer) => {
 
     const parser = new Parser({ fields, header: true, eol: '\r\n' });
     const csv = parser.parse(data);
-
-    // Add UTF-8 BOM for Excel compatibility
     return '\ufeff' + csv;
 };
 
-// --- Controller Functions ---
 
 // GET /api/offers
 const getOffers = asyncHandler(async (req, res) => {
@@ -347,31 +357,56 @@ const getOffers = asyncHandler(async (req, res) => {
 // GET /api/offers/:id
 const getOfferById = asyncHandler(async (req, res) => {
     const offer = await Offer.findById(req.params.id)
-        .populate("client") // Populate full client details
-        // No need to populate product here, details are stored in line item
-        // .populate("lineItems.productId", "itemNo description manufacturer basePrice baseCurrency");
+        .populate("client")
+        .populate({
+            path: 'lineItems.productId',
+            select: 'itemNo description manufacturer basePrice baseCurrency supplierOffers'
+        });
 
-    if (!offer) { res.status(404); throw new Error("Offer not found."); }
-    res.json(offer);
+    if (offer) {
+        res.json(offer);
+    } else {
+        res.status(404);
+        throw new Error("Offer not found");
+    }
 });
 
 // POST /api/offers
 const createOffer = asyncHandler(async (req, res) => {
-    const { clientId, validityDate, terms, status, globalMarginPercent, lineItems } = req.body;
+    const {
+        clientId,
+        validityDate,
+        terms,
+        status,
+        globalMarginPercent,
+        lineItems
+    } = req.body;
 
-    if (!clientId) { res.status(400); throw new Error("Client ID is required."); }
+    if (!clientId) {
+        res.status(400);
+        throw new Error("Client ID is required");
+    }
+    if (!lineItems || lineItems.length === 0) {
+        res.status(400);
+        throw new Error("At least one line item is required");
+    }
+
     const clientExists = await Client.findById(clientId);
-    if (!clientExists) { res.status(404); throw new Error("Client not found."); }
+    if (!clientExists) {
+        res.status(404);
+        throw new Error("Client not found");
+    }
 
-    // Fetch customer price list once
-    const customerPriceList = await CustomerPriceList.findOne({ client: clientId });
+    let customerPriceList = null;
+    // if (clientExists.priceListId) { // Assuming client model might have a priceListId
+    //     customerPriceList = await CustomerPriceList.findById(clientExists.priceListId);
+    // }
 
-    // Process line items: Calculate prices
-    const processedLineItems = await Promise.all(
-        (lineItems || []).map(item =>
-            calculateLineItemPrice(item, globalMarginPercent, customerPriceList)
-        )
-    );
+    const processedLineItems = [];
+    for (const item of lineItems) {
+        const processedItem = await calculateLineItemPrice(item, globalMarginPercent, customerPriceList);
+        processedLineItems.push(processedItem);
+    }
 
     const offerId = await generateNextOfferId();
 
@@ -379,113 +414,144 @@ const createOffer = asyncHandler(async (req, res) => {
         offerId,
         client: clientId,
         validityDate,
-        terms: terms || undefined,
-        status: status || "Draft",
-        globalMarginPercent: (globalMarginPercent !== null && globalMarginPercent >= 0) ? globalMarginPercent : null,
+        terms,
+        status,
+        globalMarginPercent,
         lineItems: processedLineItems,
+        user: req.user._id, // Assuming user is attached by auth middleware
     });
 
     const createdOffer = await offer.save();
-    // Populate client before sending response
-    const populatedOffer = await Offer.findById(createdOffer._id).populate("client");
-    res.status(201).json(populatedOffer);
+    res.status(201).json(createdOffer);
 });
 
 // PUT /api/offers/:id
 const updateOffer = asyncHandler(async (req, res) => {
-    const { clientId, validityDate, terms, status, globalMarginPercent, lineItems } = req.body;
+    const {
+        clientId,
+        validityDate,
+        terms,
+        status,
+        globalMarginPercent,
+        lineItems
+    } = req.body;
+
     const offer = await Offer.findById(req.params.id);
 
-    if (!offer) { res.status(404); throw new Error("Offer not found."); }
+    if (!offer) {
+        res.status(404);
+        throw new Error("Offer not found");
+    }
 
-    // Basic validation/checks (can be expanded)
-    // if (offer.status !== 'Draft' && ...) { /* potentially restrict updates */ }
+    // Add authorization check if needed: if (offer.user.toString() !== req.user._id.toString()) ...
 
-    // Fetch customer price list if client changes or if needed for calculations
-    const targetClientId = clientId || offer.client;
-    const customerPriceList = await CustomerPriceList.findOne({ client: targetClientId });
-
-    // Process line items: Recalculate prices
-    const processedLineItems = await Promise.all(
-        (lineItems || []).map(item =>
-            calculateLineItemPrice(item, globalMarginPercent, customerPriceList)
-        )
-    );
-
-    // Update offer fields
     if (clientId) {
         const clientExists = await Client.findById(clientId);
-        if (!clientExists) { res.status(404); throw new Error("Client not found."); }
+        if (!clientExists) {
+            res.status(404);
+            throw new Error("Client not found");
+        }
         offer.client = clientId;
     }
+
+    let customerPriceList = null;
+    // if (offer.client && offer.client.priceListId) { // Assuming client model might have a priceListId
+    //     customerPriceList = await CustomerPriceList.findById(offer.client.priceListId);
+    // }
+
+    const processedLineItems = [];
+    if (lineItems && lineItems.length > 0) {
+        for (const item of lineItems) {
+            const processedItem = await calculateLineItemPrice(item, globalMarginPercent !== undefined ? globalMarginPercent : offer.globalMarginPercent, customerPriceList);
+            processedLineItems.push(processedItem);
+        }
+        offer.lineItems = processedLineItems;
+    }
+
+
     offer.validityDate = validityDate !== undefined ? validityDate : offer.validityDate;
     offer.terms = terms !== undefined ? terms : offer.terms;
-    offer.status = status || offer.status;
-    offer.globalMarginPercent = (globalMarginPercent !== null && globalMarginPercent >= 0) ? globalMarginPercent : offer.globalMarginPercent;
-    offer.lineItems = processedLineItems;
-
+    offer.status = status !== undefined ? status : offer.status;
+    offer.globalMarginPercent = globalMarginPercent !== undefined ? globalMarginPercent : offer.globalMarginPercent;
+    
     const updatedOffer = await offer.save();
-    // Populate client before sending response
-    const populatedOffer = await Offer.findById(updatedOffer._id).populate("client");
-    res.json(populatedOffer);
+    res.json(updatedOffer);
 });
 
 // DELETE /api/offers/:id
 const deleteOffer = asyncHandler(async (req, res) => {
     const offer = await Offer.findById(req.params.id);
-    if (!offer) { res.status(404); throw new Error("Offer not found."); }
-    if (offer.status !== 'Draft') {
-        res.status(400);
-        throw new Error(`Cannot delete offer with status: ${offer.status}.`);
+    if (offer) {
+        if (offer.status !== "Draft") {
+            res.status(400);
+            throw new Error("Only Draft offers can be deleted.");
+        }
+        // Add authorization check if needed
+        await offer.deleteOne(); // Changed from offer.remove()
+        res.json({ message: "Offer removed" });
+    } else {
+        res.status(404);
+        throw new Error("Offer not found");
     }
-    await offer.deleteOne();
-    res.json({ message: "Offer removed." });
 });
 
 // GET /api/offers/:id/pdf
 const generateOfferPdf = asyncHandler(async (req, res) => {
-    const offer = await Offer.findById(req.params.id).populate('client');
-    if (!offer) { res.status(404); throw new Error('Offer not found'); }
-    if (!offer.client) { res.status(400); throw new Error('Client details missing for this offer'); }
+    const offer = await Offer.findById(req.params.id)
+        .populate("client")
+        .populate({
+            path: 'lineItems.productId',
+            select: 'itemNo description manufacturer basePrice baseCurrency supplierOffers'
+        });
 
-    // Dummy company details - replace with actual data source if needed
+    if (!offer) {
+        res.status(404);
+        throw new Error("Offer not found");
+    }
+
+    // Company details (replace with actual data source if needed)
     const companyDetails = {
         name: "PRO MAKROMED Sağlık Ürünleri",
         address: "Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye",
         phone: "+90 216 344 91 51",
-        email: "sales@promakromed.com"
+        email: "sales@promakromed.com",
     };
 
-    const pdfStream = await generatePdfStream(offer, companyDetails);
-    const filename = `Offer_${offer.offerId || req.params.id}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=offer_${offer.offerId || req.params.id}.pdf`);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    const pdfStream = await generatePdfStream(offer, companyDetails);
     pdfStream.pipe(res);
 });
 
 // GET /api/offers/:id/csv
 const generateOfferCsv = asyncHandler(async (req, res) => {
-    const offer = await Offer.findById(req.params.id).populate('client', 'companyName');
-    if (!offer) { res.status(404); throw new Error('Offer not found'); }
+    const offer = await Offer.findById(req.params.id)
+        .populate("client", "companyName") // Only need companyName for CSV client
+        .populate({
+            path: 'lineItems.productId',
+            select: 'itemNo description manufacturer basePrice baseCurrency supplierOffers'
+        });
+
+    if (!offer) {
+        res.status(404);
+        throw new Error("Offer not found");
+    }
 
     const csvString = await generateCsvString(offer);
-    const filename = `Offer_${offer.offerId || req.params.id}.csv`;
 
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8'); // Ensure UTF-8 charset
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=offer_${offer.offerId || req.params.id}.csv`);
     res.send(csvString);
 });
 
+
 module.exports = {
-    createOffer,
     getOffers,
     getOfferById,
+    createOffer,
     updateOffer,
     deleteOffer,
     generateOfferPdf,
     generateOfferCsv,
-    // addManualOfferLineItem, // Keep commented out unless specifically needed
-    // updateOfferLineItem,   // Keep commented out unless specifically needed
 };
-
