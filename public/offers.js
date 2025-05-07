@@ -1,7 +1,7 @@
-// /home/ubuntu/erp/public/offers.js (v8 - Fixed clientId field name in saveOffer)
+// /home/ubuntu/erp/public/offers.js (v9 - Fixed productId field name in saveOffer line items)
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v8): DOMContentLoaded event fired");
+    console.log("DEBUG (v9): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -34,10 +34,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentOfferId = null;
 
     function checkAuth() {
-        console.log("DEBUG (v8): checkAuth function called");
+        console.log("DEBUG (v9): checkAuth function called");
         const userInfo = JSON.parse(localStorage.getItem("userInfo"));
         if (!userInfo || !userInfo.token) {
-            console.error("DEBUG (v8): Token not found. Redirecting to login.");
+            console.error("DEBUG (v9): Token not found. Redirecting to login.");
             alert("Authentication token not found. Please log in again.");
             window.location.href = "/login.html";
             return false;
@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showError(message, element = errorMessage) {
-        console.log(`DEBUG (v8): showError called with message: ${message}`);
+        console.log(`DEBUG (v9): showError called with message: ${message}`);
         if (element) {
             element.textContent = message;
             element.style.display = message ? "block" : "none";
@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function setupEventListeners() {
-        console.log("DEBUG (v8): setupEventListeners function called");
+        console.log("DEBUG (v9): setupEventListeners function called");
         if (createOfferBtn) createOfferBtn.addEventListener("click", () => { currentOfferId = null; showOfferForm(); });
         if (offerForm) offerForm.addEventListener("submit", saveOffer);
         if (cancelOfferBtn) cancelOfferBtn.addEventListener("click", showOfferList);
@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (bulkAddBtn) {
             bulkAddBtn.addEventListener("click", handleBulkAddItems);
         } else {
-            console.log("DEBUG (v8): Could not find bulk-add-button during setupEventListeners");
+            console.log("DEBUG (v9): Could not find bulk-add-button during setupEventListeners");
         }
         if (generatePdfBtn) generatePdfBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "pdf"); });
         if (generateCsvBtn) generateCsvBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "csv"); });
@@ -109,10 +109,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadOffers() {
-        console.log("DEBUG (v8): loadOffers function called");
+        console.log("DEBUG (v9): loadOffers function called");
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
-        if (!offerListContainer) { console.error("DEBUG (v8): offerListContainer not found in loadOffers"); return; }
+        if (!offerListContainer) { console.error("DEBUG (v9): offerListContainer not found in loadOffers"); return; }
         offerListContainer.innerHTML = "";
         showError("");
         showLoading(true);
@@ -134,8 +134,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function displayOffers(offers) {
-        console.log("DEBUG (v8): displayOffers function called");
-        if (!offerListContainer) { console.error("DEBUG (v8): offerListContainer not found in displayOffers"); return; }
+        console.log("DEBUG (v9): displayOffers function called");
+        if (!offerListContainer) { console.error("DEBUG (v9): offerListContainer not found in displayOffers"); return; }
         offerListContainer.innerHTML = "";
         if (!offers || offers.length === 0) {
             offerListContainer.innerHTML = "<p>No offers found.</p>";
@@ -194,7 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showOfferForm(offerData = null) {
-        console.log("DEBUG (v8): showOfferForm function called. Offer data:", offerData ? JSON.stringify(offerData).substring(0, 200) + "..." : null);
+        console.log("DEBUG (v9): showOfferForm function called. Offer data:", offerData ? JSON.stringify(offerData).substring(0, 200) + "..." : null);
         if (offerListSection) offerListSection.style.display = "none";
         if (offerFormSection) offerFormSection.style.display = "block";
         if (offerForm) offerForm.reset();
@@ -215,22 +215,22 @@ document.addEventListener("DOMContentLoaded", () => {
         showError("");
 
         if (offerData && offerData.lineItems) {
-            console.log("DEBUG (v8): Populating existing line items for offer:", offerData.lineItems);
+            console.log("DEBUG (v9): Populating existing line items for offer:", offerData.lineItems);
             offerData.lineItems.forEach(item => addLineItemRow(item, item.isManual === undefined ? false : item.isManual)); // Pass isManual flag
         }
     }
 
     function showOfferList() {
-        console.log("DEBUG (v8): showOfferList function called");
+        console.log("DEBUG (v9): showOfferList function called");
         if (offerListSection) offerListSection.style.display = "block";
         if (offerFormSection) offerFormSection.style.display = "none";
         loadOffers();
     }
 
     async function populateClientDropdown(selectedClientRef = null) {
-        console.log("DEBUG (v8): populateClientDropdown called with selectedClientRef:", selectedClientRef);
+        console.log("DEBUG (v9): populateClientDropdown called with selectedClientRef:", selectedClientRef);
         const token = getAuthToken();
-        if (!token || !clientSelect) { console.error("DEBUG (v8): Token or clientSelect not found"); return; }
+        if (!token || !clientSelect) { console.error("DEBUG (v9): Token or clientSelect not found"); return; }
         clientSelect.innerHTML = "<option value=\"\">Select Client...</option>"; 
         try {
             const response = await fetch("/api/clients", { headers: { "Authorization": `Bearer ${token}` } });
@@ -254,9 +254,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function populateManufacturerDropdown() {
-        console.log("DEBUG (v8): populateManufacturerDropdown function called");
+        console.log("DEBUG (v9): populateManufacturerDropdown function called");
         const token = getAuthToken();
-        if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG (v8): Token or bulkAddManufacturerSelect not found"); return; }
+        if (!token || !bulkAddManufacturerSelect) { console.error("DEBUG (v9): Token or bulkAddManufacturerSelect not found"); return; }
         bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
         try {
             const response = await fetch("/api/products/manufacturers", { headers: { "Authorization": `Bearer ${token}` } });
@@ -274,11 +274,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // addLineItemRow (v8 - no change from v7 here)
+    // addLineItemRow (v9 - no change from v8 here)
     function addLineItemRow(itemData, isManual = true) {
-        console.log(`DEBUG (v8): addLineItemRow called. Is manual: ${isManual}. Item data:`, itemData ? JSON.stringify(itemData).substring(0,200) + "..." : "undefined");
+        console.log(`DEBUG (v9): addLineItemRow called. Is manual: ${isManual}. Item data:`, itemData ? JSON.stringify(itemData).substring(0,200) + "..." : "undefined");
         if (!lineItemsBody) {
-            console.error("CRITICAL (v8): lineItemsBody not found. Cannot add row.");
+            console.error("CRITICAL (v9): lineItemsBody not found. Cannot add row.");
             return;
         }
 
@@ -288,12 +288,14 @@ document.addEventListener("DOMContentLoaded", () => {
         let productSource = {}; 
         if (!isManual) {
             if (currentItemData.product && typeof currentItemData.product === 'object') {
-                productSource = currentItemData.product;
+                productSource = currentItemData.product; // This is from bulk add (product.data)
+            } else if (currentItemData.productId && typeof currentItemData.productId === 'object') {
+                 productSource = currentItemData.productId; // This is from loading existing offer (populated product)
             } else {
-                productSource = currentItemData; 
+                productSource = currentItemData; // Fallback or existing item structure
             }
         }
-        console.log(`DEBUG (v8): Product source for row:`, productSource ? JSON.stringify(productSource).substring(0,200) + "..." : "{}");
+        console.log(`DEBUG (v9): Product source for row:`, productSource ? JSON.stringify(productSource).substring(0,200) + "..." : "{}");
 
         row.dataset.itemId = !isManual && productSource && productSource._id ? productSource._id : (currentItemData._id || `manual_${Date.now()}`);
         row.dataset.isManual = String(isManual);
@@ -316,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
             unitPriceDisplay = currentItemData.finalPriceUSD !== undefined ? `$${parseFloat(currentItemData.finalPriceUSD).toFixed(2)}` : "TBD";
             lineTotalDisplay = currentItemData.lineTotalUSD !== undefined ? `$${parseFloat(currentItemData.lineTotalUSD).toFixed(2)}` : "TBD";
         } else { // Non-manual (bulk-added or loaded from DB)
-            itemNoVal = productSource.itemNumber || productSource.itemNo || "N/A"; // Prioritize itemNumber from bulk, then itemNo
+            itemNoVal = productSource.itemNumber || productSource.itemNo || "N/A";
             manufVal = productSource.manufacturer || "N/A";
             descVal = productSource.description || "N/A";
             qtyVal = currentItemData.quantity || 1;
@@ -416,11 +418,11 @@ document.addEventListener("DOMContentLoaded", () => {
         removeBtn.innerHTML = "&times;";
         removeBtn.title = "Remove Item";
         actionCell.appendChild(removeBtn);
-        console.log(`DEBUG (v8): Row added for itemNo: ${itemNoVal}, isManual: ${isManual}`);
+        console.log(`DEBUG (v9): Row added for itemNo: ${itemNoVal}, isManual: ${isManual}`);
     }
 
     async function handleBulkAddItems() {
-        console.log("DEBUG (v8): handleBulkAddItems function called");
+        console.log("DEBUG (v9): handleBulkAddItems function called");
         const token = getAuthToken();
         const manufacturer = bulkAddManufacturerSelect.value;
         const partNumbersText = bulkAddPartNumbersTextarea.value.trim();
@@ -461,6 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             result.forEach(product => {
                 if (product.found) {
+                    // When adding from bulk, product.data contains the actual product object from backend
                     addLineItemRow({ product: product.data, quantity: 1, pricingMethod: "Margin" }, false);
                     itemsAddedCount++;
                 } else {
@@ -478,7 +481,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
         } catch (error) {
-            console.error("Error in bulk add (v8):", error);
+            console.error("Error in bulk add (v9):", error);
             showLoading(false);
             if (error instanceof SyntaxError && error.message.includes("Unexpected token")) {
                 showBulkAddStatus("Error: Could not process response from server (unexpected format). Please check server logs.", true);
@@ -490,17 +493,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function saveOffer(event) {
         event.preventDefault();
-        console.log("DEBUG (v8): saveOffer function called");
+        console.log("DEBUG (v9): saveOffer function called");
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
 
-        const client = clientSelect.value; // This is the client ID from the dropdown
+        const clientId = clientSelect.value; // Already correct from v8
         const validityDate = validityInput.value;
         const terms = termsInput.value;
         const status = statusSelect.value;
         const globalMarginPercent = parseFloat(globalMarginInput.value) || 0;
 
-        if (!client) { // Check if client ID is selected
+        if (!clientId) { 
             showError("Please select a client.");
             return;
         }
@@ -511,7 +514,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         rows.forEach(row => {
             const isManual = row.dataset.isManual === "true";
-            const productId = isManual ? null : row.dataset.itemId; 
+            // CORRECTED: Use row.dataset.itemId for productId, which is set in addLineItemRow
+            const lineItemId = isManual ? null : row.dataset.itemId; 
             
             const itemNoInput = row.querySelector(".item-no-input");
             const descriptionInput = row.querySelector(".description-input");
@@ -543,12 +547,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 manufacturer: manufacturer,
                 quantity: quantity,
                 isManual: isManual,
-                product: productId, 
+                productId: lineItemId, // CORRECTED: Send as productId
                 pricingMethod: pricingMethod,
                 marginPercent: marginPercent,
             };
             lineItems.push(lineItem);
-            console.log("DEBUG (v8): Collected line item for save:", JSON.stringify(lineItem));
+            console.log("DEBUG (v9): Collected line item for save:", JSON.stringify(lineItem));
         });
 
         if (!formIsValid) return;
@@ -559,14 +563,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const offerData = {
-            clientId: client, // CORRECTED: Send as clientId to match backend
+            clientId: clientId, 
             validityDate: validityDate || null, 
             terms,
             status,
             globalMarginPercent,
             lineItems,
         };
-        console.log("DEBUG (v8): Offer data to save:", JSON.stringify(offerData));
+        console.log("DEBUG (v9): Offer data to save:", JSON.stringify(offerData));
 
         const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
         const method = currentOfferId ? "PUT" : "POST";
@@ -582,15 +586,17 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseText = await response.text(); 
-            console.log("DEBUG (v8): Save response text:", responseText.substring(0, 500)); 
+            console.log("DEBUG (v9): Save response text:", responseText.substring(0, 500)); 
 
             if (!response.ok) {
                 let errorData = { message: `Server error: ${response.status}` };
                 try {
                     errorData = JSON.parse(responseText); 
                 } catch (e) {
-                    console.warn(`Could not parse error JSON from save offer (v8): ${e.message}`);
-                    if (responseText.toLowerCase().includes("bad request")) {
+                    console.warn(`Could not parse error JSON from save offer (v9): ${e.message}`);
+                    if (responseText.toLowerCase().includes("internal server error")) {
+                         errorData.message = "Internal Server Error. Please check server logs."; // More specific for 500
+                    } else if (responseText.toLowerCase().includes("bad request")) {
                          errorData.message = "Server error: 400. Please check data.";
                     } else if (responseText.length < 200) { 
                         errorData.message = responseText;
@@ -603,20 +609,20 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 savedOfferData = JSON.parse(responseText);
             } catch (e) {
-                console.warn("Could not parse success JSON from save offer (v8), but response was OK.");
+                console.warn("Could not parse success JSON from save offer (v9), but response was OK.");
             }
 
             alert(savedOfferData.message || "Offer saved successfully!");
             showOfferList();
         } catch (error) {
-            console.error(`Error saving offer (v8): ${error.name}: ${error.message}`);
+            console.error(`Error saving offer (v9): ${error.name}: ${error.message}`);
             showLoading(false);
             showError(`Error saving offer: ${error.message}. Please try again.`);
         }
     }
 
     async function loadOfferForEditing(id) {
-        console.log(`DEBUG (v8): loadOfferForEditing called for ID: ${id}`);
+        console.log(`DEBUG (v9): loadOfferForEditing called for ID: ${id}`);
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
         showLoading(true);
@@ -639,7 +645,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function deleteOffer(id) {
-        console.log(`DEBUG (v8): deleteOffer called for ID: ${id}`);
+        console.log(`DEBUG (v9): deleteOffer called for ID: ${id}`);
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
         showLoading(true);
@@ -665,7 +671,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function generateOfferOutput(id, format) {
-        console.log(`DEBUG (v8): generateOfferOutput called for ID: ${id}, Format: ${format}`);
+        console.log(`DEBUG (v9): generateOfferOutput called for ID: ${id}, Format: ${format}`);
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
         showLoading(true);
