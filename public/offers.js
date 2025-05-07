@@ -324,5 +324,11 @@ document.addEventListener("DOMContentLoaded", () => {
         row.dataset.productId = currentItem && currentItem._id ? currentItem._id : (itemData && itemData._id ? itemData._id : "");
 
         row.innerHTML = `
-            <td><input type="text" class="form-control item-number" value="${currentItem && currentItem.itemNo ? currentItem.itemNo : (itemData && itemData.itemNo ? itemData.itemNo : 
-(Content truncated due to size limit. Use line ranges to read in chunks)
+            <td><input type="text" class="form-control item-number" value="${currentItem && currentItem.itemNo ? currentItem.itemNo : (itemData && itemData.itemNo ? itemData.itemNo : '')}" ${isManualEntry ? '' : 'readonly'}></td>
+            <td><input type="text" class="form-control item-description" value="${currentItem && currentItem.description ? currentItem.description : (itemData && itemData.description ? itemData.description : '')}" ${isManualEntry ? '' : 'readonly'}></td>
+            <td><input type="number" class="form-control item-quantity" value="${itemData && itemData.quantity ? itemData.quantity : 1}" min="1"></td>
+            <td><span class="unit-price-display">0.00</span></td>
+            <td><input type="number" step="0.01" class="form-control item-margin-percent" value="${itemData && itemData.marginPercent !== undefined ? itemData.marginPercent : ''}" placeholder="Global"></td>
+            <td><span class="line-total-display">0.00</span></td>
+            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
+        `;
