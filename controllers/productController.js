@@ -1,6 +1,3 @@
-const asyncHandler = require("express-async-handler");
-const Product = require("../models/productModel"); // Re-enabled model loading
-
 // @desc    Fetch all products (Restored Original Logic)
 // @route   GET /api/products
 // @access  Private (or Public depending on requirements)
@@ -20,13 +17,23 @@ const getProductById = asyncHandler(async (req, res) => {
   res.json({ itemNo: req.params.id, description: "Diagnostic Single Product (Model Load Test)" });
 });
 
-// @desc    Get distinct manufacturers (DIAGNOSTIC - DUMMY DATA, MODEL LOAD TEST)
+// @desc    Get distinct manufacturers (Restored Original Logic)
 // @route   GET /api/products/manufacturers
 // @access  Private
 const getManufacturers = asyncHandler(async (req, res) => {
-    console.log("DIAGNOSTIC (Model Load Test): getManufacturers called");
-    // No actual Product.distinct() yet
-    res.json(["DiagnosticMfg1 (Model Load Test)", "DiagnosticMfg2 (Model Load Test)"]);
+  console.log("DEBUG: getManufacturers called - Original Logic Restored");
+  try {
+    // Adding a filter to exclude null or empty string manufacturers
+    const manufacturers = await Product.distinct("manufacturer", {
+      manufacturer: { $ne: null, $ne: "" },
+    });
+    // Optional: Sort manufacturers alphabetically
+    manufacturers.sort();
+    res.json(manufacturers);
+  } catch (error) {
+    console.error("Error fetching manufacturers:", error);
+    res.status(500).json({ message: "Server error fetching manufacturers" });
+  }
 });
 
 // @desc    Search products by item number or description (DIAGNOSTIC - DUMMY DATA, MODEL LOAD TEST)
