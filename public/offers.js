@@ -1,7 +1,7 @@
-// /home/ubuntu/erp/public/offers.js (v12 - Live price updates)
+// /home/ubuntu/erp/public/offers.js (v13 - Fix for bulk add initial price display)
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v12): DOMContentLoaded event fired");
+    console.log("DEBUG (v13): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -79,10 +79,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Function to update price for a single row
     function updateAndDisplayItemPrice(rowElement) {
         const isManual = rowElement.dataset.isManual === "true";
-        if (isManual) return; // Manual items are not auto-calculated here
+        if (isManual) return; 
 
         const basePriceForMargin = parseFloat(rowElement.dataset.basePriceForMargin) || 0;
         const quantityInput = rowElement.querySelector(".item-quantity");
@@ -107,12 +106,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lineTotalDisplay) lineTotalDisplay.textContent = lineTotal.toFixed(2);
     }
 
-    // Function to recalculate all item prices (e.g., when global margin changes)
     function recalculateAllPrices() {
         if (!lineItemsBody) return;
         const rows = lineItemsBody.querySelectorAll("tr");
         rows.forEach(row => {
-            // Only update if item-specific margin is not set
             const marginInput = row.querySelector(".item-margin-percent");
             if (!marginInput || marginInput.value.trim() === "") {
                  updateAndDisplayItemPrice(row);
@@ -137,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (row) row.remove();
                 }
             });
-            // Event delegation for quantity and item margin changes
             lineItemsBody.addEventListener("input", (e) => {
                 if (e.target.classList.contains("item-quantity") || e.target.classList.contains("item-margin-percent")) {
                     const row = e.target.closest("tr");
@@ -248,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (termsInput && offerData) termsInput.value = offerData.terms || "";
         if (statusSelect && offerData) statusSelect.value = offerData.status || "Draft";
         if (globalMarginInput && offerData) globalMarginInput.value = offerData.globalMarginPercent !== undefined ? offerData.globalMarginPercent : "";
-        else if (globalMarginInput) globalMarginInput.value = ""; // Clear for new offer
+        else if (globalMarginInput) globalMarginInput.value = ""; 
 
         if (generatePdfBtn) generatePdfBtn.style.display = currentOfferId ? "inline-block" : "none";
         if (generateCsvBtn) generateCsvBtn.style.display = currentOfferId ? "inline-block" : "none";
@@ -259,8 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (offerData && offerData.lineItems) {
             offerData.lineItems.forEach(item => {
-                // IMPORTANT ASSUMPTION: Backend now sends `basePriceUSDForMarginApplication` with each line item
-                // when an offer is fetched for editing.
                 addLineItemRow(item, item.isManual === undefined ? false : item.isManual);
             });
         }
@@ -315,276 +309,20 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Modified addLineItemRow for live pricing
     function addLineItemRow(itemData, isManualEntry = false) {
         if (!lineItemsBody) return;
         const row = lineItemsBody.insertRow();
-        const currentItem = itemData || {};
+        const currentItem = itemData && itemData.productId ? itemData.productId : itemData; // Handle populated vs direct product data
 
-        row.dataset.isManual = isManualEntry;
-        // IMPORTANT: Expecting `basePriceUSDForMarginApplication` from backend for non-manual items
-        // This is the USD price AFTER 3% protection, BEFORE offer-specific margin.
-        row.dataset.basePriceForMargin = isManualEntry ? "0" : (currentItem.basePriceUSDForMarginApplication || "0");
-        row.dataset.productId = !isManualEntry && currentItem.productId ? (typeof currentItem.productId === 'object' ? currentItem.productId._id : currentItem.productId) : "";
+        row.dataset.isManual = isManualEntry.toString();
+        // For bulk-added items, itemData is the product object from bulk lookup (which has .data.basePriceUSDForMarginApplication)
+        // For items loaded from an existing offer, itemData directly has .basePriceUSDForMarginApplication
+        const basePriceForMargin = itemData ? 
+            (itemData.data ? itemData.data.basePriceUSDForMarginApplication : itemData.basePriceUSDForMarginApplication) || 0 
+            : 0;
+        row.dataset.basePriceForMargin = basePriceForMargin.toString();
+        row.dataset.productId = currentItem && currentItem._id ? currentItem._id : (itemData && itemData._id ? itemData._id : "");
 
         row.innerHTML = `
-            <td><input type="text" class="form-control item-itemNo" value="${currentItem.itemNo || ""}" ${isManualEntry ? "" : "readonly"}></td>
-            <td><input type="text" class="form-control item-description" value="${currentItem.description || ""}" ${isManualEntry ? "" : "readonly"}></td>
-            <td><input type="text" class="form-control item-manufacturer" value="${currentItem.manufacturer || ""}" ${isManualEntry ? "" : "readonly"}></td>
-            <td><input type="number" class="form-control item-quantity" value="${currentItem.quantity || 1}" min="1"></td>
-            <td>
-                ${isManualEntry 
-                    ? `<input type="number" step="0.01" class="form-control item-unit-price-manual" value="${(currentItem.finalPriceUSD || 0).toFixed(2)}">` 
-                    : `<span class="unit-price-display">${(currentItem.finalPriceUSD || 0).toFixed(2)}</span>`}
-            </td>
-            <td><input type="number" step="0.01" class="form-control item-margin-percent" placeholder="Global" value="${currentItem.marginPercent !== null && currentItem.marginPercent !== undefined ? currentItem.marginPercent : ""}" ${isManualEntry ? "disabled" : ""}></td>
-            <td>
-                ${isManualEntry 
-                    ? `<input type="number" step="0.01" class="form-control item-line-total-manual" value="${(currentItem.lineTotalUSD || 0).toFixed(2)}">` 
-                    : `<span class="line-total-display">${(currentItem.lineTotalUSD || 0).toFixed(2)}</span>`}
-            </td>
-            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-times"></i></button></td>
-        `;
-        
-        if (!isManualEntry) {
-            updateAndDisplayItemPrice(row); // Calculate and display initial price for non-manual items
-        }
-    }
-
-    async function handleBulkAddItems() {
-        const token = getAuthToken();
-        if (!token) { showBulkAddStatus("Authentication error.", true); return; }
-
-        const manufacturer = bulkAddManufacturerSelect.value;
-        const partNumbersRaw = bulkAddPartNumbersTextarea.value;
-
-        if (!manufacturer) {
-            showBulkAddStatus("Please select a manufacturer.", true); return;
-        }
-        if (!partNumbersRaw.trim()) {
-            showBulkAddStatus("Please enter part numbers.", true); return;
-        }
-
-        const partNumbers = partNumbersRaw.split(/\s*[\n,;]+\s*/).map(pn => pn.trim()).filter(pn => pn);
-        if (partNumbers.length === 0) {
-            showBulkAddStatus("No valid part numbers entered.", true); return;
-        }
-
-        showBulkAddStatus("Adding items...", false);
-        showLoading(true);
-
-        try {
-            const response = await fetch("/api/products/bulk-lookup", {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ manufacturer, partNumbers }),
-            });
-            showLoading(false);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: "Server error during bulk add." }));
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-            const products = await response.json();
-            let itemsAddedCount = 0;
-            let itemsNotFound = [];
-
-            products.forEach(product => {
-                if (product && !product.error) {
-                    // IMPORTANT ASSUMPTION: The backend /api/products/bulk-lookup now needs to return products
-                    // with a `basePriceUSDForMarginApplication` field, pre-calculated by a simplified version
-                    // of the offer's price calculation (lowest supplier + 3% protection).
-                    // For now, we'll use product.basePrice and assume it's USD and has protection for demo.
-                    // This needs alignment with backend for true live pricing on bulk add.
-                    const lineItemData = {
-                        productId: product._id,
-                        itemNo: product.itemNo,
-                        description: product.description,
-                        manufacturer: product.manufacturer,
-                        quantity: 1,
-                        // THIS IS A PLACEHOLDER - Backend needs to provide this value properly for bulk-added items
-                        basePriceUSDForMarginApplication: product.basePriceUSDForMarginApplication || product.basePrice || 0, 
-                        marginPercent: null // Default to global margin
-                    };
-                    addLineItemRow(lineItemData, false);
-                    itemsAddedCount++;
-                } else if (product && product.error && product.partNumber) {
-                    itemsNotFound.push(product.partNumber);
-                }
-            });
-
-            let statusMessage = `${itemsAddedCount} item(s) added.`;
-            if (itemsNotFound.length > 0) {
-                statusMessage += ` Part numbers not found: ${itemsNotFound.join(", ")}.`;
-            }
-            showBulkAddStatus(statusMessage, itemsNotFound.length > 0 && itemsAddedCount === 0);
-            bulkAddPartNumbersTextarea.value = ""; // Clear textarea
-
-        } catch (error) {
-            showLoading(false);
-            showBulkAddStatus(`Error adding items: ${error.message}`, true);
-        }
-    }
-
-    async function saveOffer(e) {
-        e.preventDefault();
-        const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
-
-        const offerDetails = {
-            clientId: clientSelect.value,
-            validityDate: validityInput.value || null,
-            terms: termsInput.value,
-            status: statusSelect.value,
-            globalMarginPercent: parseFloat(globalMarginInput.value) || 0,
-            lineItems: [],
-        };
-
-        if (!offerDetails.clientId) {
-            showError("Client is required."); return;
-        }
-
-        const rows = lineItemsBody.querySelectorAll("tr");
-        rows.forEach(row => {
-            const isManual = row.dataset.isManual === "true";
-            const itemNoInput = row.querySelector(".item-itemNo");
-            const descriptionInput = row.querySelector(".item-description");
-            const manufacturerInput = row.querySelector(".item-manufacturer");
-            const quantityInput = row.querySelector(".item-quantity");
-            const marginInput = row.querySelector(".item-margin-percent");
-            
-            const lineItem = {
-                isManual: isManual,
-                itemNo: itemNoInput ? itemNoInput.value : "",
-                description: descriptionInput ? descriptionInput.value : "",
-                manufacturer: manufacturerInput ? manufacturerInput.value : "",
-                quantity: parseInt(quantityInput.value) || 1,
-                marginPercent: marginInput && marginInput.value.trim() !== "" ? parseFloat(marginInput.value) : null,
-                // For non-manual, productId is crucial. For manual, unit price is crucial.
-                productId: !isManual ? row.dataset.productId : null,
-                // For manual items, we'd also need to capture the manually entered price
-                // The backend will recalculate prices for non-manual items based on productId, qty, margin.
-            };
-            if (isManual) {
-                const manualUnitPriceInput = row.querySelector(".item-unit-price-manual");
-                // Backend expects `finalPriceUSD` for manual items if we want to store it directly.
-                // However, current backend `calculateLineItemPrice` sets manual items to 0.
-                // This part needs alignment if manual prices are to be saved directly.
-                // For now, sending minimal data for manual, backend will handle as per its logic.
-            }
-
-            offerDetails.lineItems.push(lineItem);
-        });
-
-        if (offerDetails.lineItems.length === 0) {
-            showError("At least one line item is required."); return;
-        }
-
-        showLoading(true);
-        showError("");
-
-        const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
-        const method = currentOfferId ? "PUT" : "POST";
-
-        try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify(offerDetails),
-            });
-            showLoading(false);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: "Server error during save." }));
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-            const savedOffer = await response.json();
-            alert(`Offer ${currentOfferId ? "updated" : "saved"} successfully! Offer ID: ${savedOffer.offerId}`);
-            showOfferList();
-        } catch (error) {
-            showLoading(false);
-            showError(`Error saving offer: ${error.message}. Please try again.`);
-        }
-    }
-
-    async function loadOfferForEditing(id) {
-        const token = getAuthToken();
-        if (!token) { showError("Authentication error."); return; }
-        showLoading(true);
-        showError("");
-        try {
-            const response = await fetch(`/api/offers/${id}`, { headers: { "Authorization": `Bearer ${token}` } });
-            showLoading(false);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: "Server error loading offer." }));
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-            const offer = await response.json();
-            showOfferForm(offer);
-        } catch (error) {
-            showLoading(false);
-            showError(`Error loading offer: ${error.message}`);
-            showOfferList(); 
-        }
-    }
-
-    async function deleteOffer(id) {
-        const token = getAuthToken();
-        if (!token) { showError("Authentication error."); return; }
-        showLoading(true);
-        showError("");
-        try {
-            const response = await fetch(`/api/offers/${id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${token}` } });
-            showLoading(false);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: "Server error deleting offer." }));
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-            alert("Offer deleted successfully.");
-            loadOffers();
-        } catch (error) {
-            showLoading(false);
-            showError(`Error deleting offer: ${error.message}`);
-        }
-    }
-
-    async function generateOfferOutput(id, format) {
-        const token = getAuthToken();
-        if (!token) { alert("Authentication error."); return; }
-        showLoading(true);
-        try {
-            const response = await fetch(`/api/offers/${id}/${format}`, { headers: { "Authorization": `Bearer ${token}` } });
-            showLoading(false);
-            if (!response.ok) {
-                let errorText = `Error generating ${format.toUpperCase()}: ${response.statusText}`;
-                try {
-                    const errorHtml = await response.text();
-                    if (errorHtml.toLowerCase().includes("internal server error")) {
-                         errorText = `Internal Server Error generating ${format.toUpperCase()}. Please check server logs.`
-                    } else if (response.headers.get("content-type")?.includes("application/json")) {
-                        const errorJson = JSON.parse(errorHtml);
-                        errorText = errorJson.message || errorText;
-                    }
-                } catch(e) { /* ignore parsing error, use statusText */ }
-                throw new Error(errorText);
-            }
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = url;
-            a.download = `offer_${id}.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-        } catch (error) {
-            showLoading(false);
-            alert(error.message);
-        }
-    }
-
-    // --- Initialization ---
-    if (!checkAuth()) return;
-    setupEventListeners();
-    showOfferList(); 
-});
-
+            <td><input type="text" class="form-control item-number" value="${currentItem && currentItem.itemNo ? currentItem.itemNo : (itemData && itemData.itemNo ? itemData.itemNo : 
+(Content truncated due to size limit. Use line ranges to read in chunks)
