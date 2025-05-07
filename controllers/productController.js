@@ -6,18 +6,16 @@ const Product = require("../models/productModel");
 // @access  Private (or Public depending on requirements)
 const getProducts = asyncHandler(async (req, res) => {
   console.log("DEBUG: getProducts called - Original Logic Restored");
-  // Add filtering/pagination logic here if needed
   const products = await Product.find({});
   res.json(products);
 });
 
-// @desc    Fetch single product by ID (DIAGNOSTIC - DUMMY DATA, MODEL LOAD TEST)
+// @desc    Fetch single product by ID (DIAGNOSTIC - DUMMY DATA)
 // @route   GET /api/products/:id
 // @access  Private (or Public)
 const getProductById = asyncHandler(async (req, res) => {
-  console.log(`DIAGNOSTIC (Model Load Test): getProductById called with id: ${req.params.id}`);
-  // No actual Product.findById() yet
-  res.json({ itemNo: req.params.id, description: "Diagnostic Single Product (Model Load Test)" });
+  console.log(`DIAGNOSTIC: getProductById called with id: ${req.params.id}`);
+  res.json({ itemNo: req.params.id, description: "Diagnostic Single Product" });
 });
 
 // @desc    Get distinct manufacturers (Restored Original Logic)
@@ -26,11 +24,9 @@ const getProductById = asyncHandler(async (req, res) => {
 const getManufacturers = asyncHandler(async (req, res) => {
   console.log("DEBUG: getManufacturers called - Original Logic Restored");
   try {
-    // Adding a filter to exclude null or empty string manufacturers
     const manufacturers = await Product.distinct("manufacturer", {
       manufacturer: { $ne: null, $ne: "" },
     });
-    // Optional: Sort manufacturers alphabetically
     manufacturers.sort();
     res.json(manufacturers);
   } catch (error) {
@@ -39,34 +35,54 @@ const getManufacturers = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Search products by item number or description (DIAGNOSTIC - DUMMY DATA, MODEL LOAD TEST)
+// @desc    Search products by item number or description (DIAGNOSTIC - DUMMY DATA)
 // @route   GET /api/products/search
 // @access  Private (Requires login)
 const searchProducts = asyncHandler(async (req, res) => {
-    console.log(`DIAGNOSTIC (Model Load Test): searchProducts called with query: ${req.query.query}`);
-    // No actual Product.find() yet
-    res.json([{ itemNo: "SEARCH_DUMMY", description: "Diagnostic Searched Product (Model Load Test)" }]);
+    console.log(`DIAGNOSTIC: searchProducts called with query: ${req.query.query}`);
+    res.json([{ itemNo: "SEARCH_DUMMY", description: "Diagnostic Searched Product" }]);
 });
 
-// @desc    Get products by manufacturer and list of part numbers (DIAGNOSTIC - DUMMY DATA, MODEL LOAD TEST)
+// @desc    Get products by manufacturer and list of part numbers (Restored Original Logic)
 // @route   POST /api/products/bulk-lookup
 // @access  Private (Requires login)
 const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) => {
     const { manufacturer, partNumbers } = req.body;
-    console.log(`DIAGNOSTIC (Model Load Test): getProductsByManufacturerAndPartNumbers called with mfg: ${manufacturer}, parts: ${partNumbers}`);
-    if (!manufacturer || !partNumbers || !Array.isArray(partNumbers) || partNumbers.length === 0) {
-        res.status(400).json({ message: "Manufacturer and a non-empty array of partNumbers are required."});
-        return;
-    }
-    // No actual Product.find() yet
-    const results = partNumbers.map(pn => ({
-        itemNumber: pn,
-        found: true, // Assume found for diagnostic purposes
-        data: { itemNo: pn, description: `Diagnostic bulk product ${pn} (Model Load Test)`, manufacturer: manufacturer, basePrice: 10, baseCurrency: "USD" }
-    }));
-    res.json(results);
-});
+    console.log(`DEBUG: getProductsByManufacturerAndPartNumbers called with mfg: ${manufacturer}, parts: ${partNumbers}`);
 
+    if (!manufacturer || !partNumbers || !Array.isArray(partNumbers) || partNumbers.length === 0) {
+        return res.status(400).json({ message: "Manufacturer and a non-empty array of partNumbers are required." });
+    }
+
+    try {
+        const foundProducts = await Product.find({
+            manufacturer: manufacturer,
+            itemNo: { $in: partNumbers }
+        }).lean(); // .lean() for plain JS objects, faster
+
+        const results = partNumbers.map(pn => {
+            const product = foundProducts.find(p => p.itemNo === pn);
+            if (product) {
+                return {
+                    itemNumber: pn,
+                    found: true,
+                    data: product // Send the whole product object
+                };
+            } else {
+                return {
+                    itemNumber: pn,
+                    found: false,
+                    data: null
+                };
+            }
+        });
+        console.log("DEBUG: Bulk lookup results:", JSON.stringify(results, null, 2));
+        res.json(results);
+    } catch (error) {
+        console.error("Error in bulk product lookup:", error);
+        res.status(500).json({ message: "Server error during bulk product lookup." });
+    }
+});
 
 module.exports = {
     getProducts,
