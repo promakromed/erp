@@ -1,62 +1,67 @@
 const mongoose = require("mongoose");
 
+// Define schema for each item in the price list
 const priceListItemSchema = new mongoose.Schema({
-    product: { // Reference to the specific product
+    product: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Product",
-        required: true,
+        required: true
     },
-    // Store key identifiers for easier lookup without population if needed
     itemNo: {
         type: String,
         required: true,
+        trim: true
     },
     manufacturer: {
         type: String,
         required: true,
+        trim: true
     },
-    // The specific price for this client/product combination
+    description: {
+        type: String,
+        trim: true
+    },
     price: {
         type: Number,
         required: true,
+        min: 0
     },
-    currency: { // Currency of the specific price
+    currency: {
         type: String,
         required: true,
-        default: "USD", // Default to USD as offers are in USD, but keep field for clarity
-    },
+        default: "USD"
+    }
 }, { _id: false });
 
-const customerPriceListSchema = new mongoose.Schema(
-    {
-        name: { // e.g., "Client ABC Standard Pricing 2024"
-            type: String,
-            required: true,
-        },
-        client: { // Link to a specific client
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Client",
-            required: true,
-            unique: true, // Assuming one price list per client for simplicity
-        },
-        description: {
-            type: String,
-        },
-        effectiveDate: {
-            type: Date,
-            default: Date.now,
-        },
-        items: [priceListItemSchema],
+// Main Customer Price List Schema
+const customerPriceListSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, "Name is required"],
+        trim: true
     },
-    {
-        timestamps: true, // Adds createdAt and updatedAt fields
-    }
-);
+    client: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Client",
+        required: true,
+        unique: true
+    },
+    description: {
+        type: String,
+        trim: true
+    },
+    effectiveDate: {
+        type: Date,
+        default: Date.now
+    },
+    items: [priceListItemSchema]
+}, {
+    timestamps: true // Adds createdAt and updatedAt
+});
 
-// Optional: Add index for faster lookup by client and product details within items array
-customerPriceListSchema.index({ client: 1, "items.itemNo": 1, "items.manufacturer": 1 });
+// Indexes for faster querying
+customerPriceListSchema.index({ client: 1, "items.itemNo": 1 });
+customerPriceListSchema.index({ client: 1 });
 
-const CustomerPriceList = mongoose.model("CustomerPriceList", customerPriceListSchema);
-
-module.exports = CustomerPriceList;
-
+// Export model
+module.exports = mongoose.model("CustomerPriceList", customerPriceListSchema);
