@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const CustomerPriceList = require("../models/customerPriceListModel");
 const Client = require("../models/clientModel");
 
-// @desc    Fetch all price lists
+// @desc    Fetch all customer price lists
 // @route   GET /api/price-lists
 // @access  Private/Admin
 const getCustomerPriceLists = asyncHandler(async (req, res) => {
@@ -12,7 +12,7 @@ const getCustomerPriceLists = asyncHandler(async (req, res) => {
     res.json(priceLists);
 });
 
-// @desc    Get price list by ID
+// @desc    Get single customer price list by ID
 // @route   GET /api/price-lists/:id
 // @access  Private
 const getCustomerPriceListById = asyncHandler(async (req, res) => {
@@ -20,7 +20,7 @@ const getCustomerPriceListById = asyncHandler(async (req, res) => {
         .populate("customer", "companyName clientName")
         .populate({
             path: "items.productId",
-            select: "itemNo description manufacturer basePrice baseCurrency"
+            select: "itemNo description manufacturer"
         });
 
     if (priceList) {
@@ -42,17 +42,17 @@ const createCustomerPriceList = asyncHandler(async (req, res) => {
         return;
     }
 
-    // Check if customer exists
+    // Check if client exists
     const clientExists = await Client.findById(customer);
     if (!clientExists) {
-        res.status(404).json({ message: "Client not found" });
+        res.status(404).json({ message: "Client not found." });
         return;
     }
 
-    // Validate item structure
+    // Ensure item numbers are strings
     const validItems = items.map(item => ({
-        itemNo: item.itemNo,
-        price: item.price !== undefined ? parseFloat(item.price) : 0,
+        itemNo: item.itemNo ? item.itemNo.toString() : "",
+        price: typeof item.price === "number" ? item.price : 0,
         currency: item.currency || "USD"
     }));
 
@@ -78,7 +78,6 @@ const updateCustomerPriceList = asyncHandler(async (req, res) => {
         return;
     }
 
-    // Optionally validate and update customer
     if (customer) {
         const clientExists = await Client.findById(customer);
         if (!clientExists) {
@@ -88,11 +87,10 @@ const updateCustomerPriceList = asyncHandler(async (req, res) => {
         priceList.customer = customer;
     }
 
-    // Optionally update items
     if (items && Array.isArray(items)) {
         priceList.items = items.map(item => ({
-            itemNo: item.itemNo,
-            price: item.price !== undefined ? parseFloat(item.price) : 0,
+            itemNo: item.itemNo?.toString() || "",
+            price: typeof item.price === "number" ? item.price : 0,
             currency: item.currency || "USD"
         }));
     }
@@ -113,7 +111,7 @@ const deleteCustomerPriceList = asyncHandler(async (req, res) => {
     }
 
     await priceList.remove();
-    res.json({ message: "Price list removed successfully" });
+    res.json({ message: "Price list deleted successfully" });
 });
 
 module.exports = {
