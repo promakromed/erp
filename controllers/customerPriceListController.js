@@ -36,7 +36,6 @@ const getCustomerPriceListById = asyncHandler(async (req, res) => {
 const createCustomerPriceList = asyncHandler(async (req, res) => {
     const { customer, items } = req.body;
 
-    // Validate required fields
     if (!customer || !Array.isArray(items)) {
         res.status(400).json({ message: "Customer and items are required." });
         return;
@@ -45,20 +44,21 @@ const createCustomerPriceList = asyncHandler(async (req, res) => {
     // Check if client exists
     const clientExists = await Client.findById(customer);
     if (!clientExists) {
-        res.status(404).json({ message: "Client not found." });
+        res.status(404).json({ message: "Client not found" });
         return;
     }
 
-    // Ensure item numbers are strings
-    const validItems = items.map(item => ({
+    // Ensure item numbers are strings and prices are valid
+    const processedItems = items.map(item => ({
         itemNo: item.itemNo ? item.itemNo.toString() : "",
+        productId: item.productId || null,
         price: typeof item.price === "number" ? item.price : 0,
         currency: item.currency || "USD"
     }));
 
     const newPriceList = new CustomerPriceList({
         customer,
-        items: validItems
+        items: processedItems
     });
 
     const createdPriceList = await newPriceList.save();
@@ -78,6 +78,7 @@ const updateCustomerPriceList = asyncHandler(async (req, res) => {
         return;
     }
 
+    // Optionally update customer
     if (customer) {
         const clientExists = await Client.findById(customer);
         if (!clientExists) {
@@ -87,9 +88,11 @@ const updateCustomerPriceList = asyncHandler(async (req, res) => {
         priceList.customer = customer;
     }
 
+    // Optionally update items
     if (items && Array.isArray(items)) {
         priceList.items = items.map(item => ({
             itemNo: item.itemNo?.toString() || "",
+            productId: item.productId || null,
             price: typeof item.price === "number" ? item.price : 0,
             currency: item.currency || "USD"
         }));
@@ -110,7 +113,7 @@ const deleteCustomerPriceList = asyncHandler(async (req, res) => {
         return;
     }
 
-    await priceList.remove();
+    await priceList.deleteOne();
     res.json({ message: "Price list deleted successfully" });
 });
 
