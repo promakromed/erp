@@ -1,27 +1,32 @@
 const express = require("express");
 const router = express.Router();
+
+// Middleware
+const { protect, admin } = require("../middleware/authMiddleware");
+
+// Controller functions
 const {
-    uploadPriceList,    // Handles CSV upload and processing
-    getPriceListForClient,
-    updatePriceList,    // Potentially update description or add/remove items manually?
-    deletePriceList
-} = require("./../controllers/priceListController"); // Adjust path as needed
-const { protect } = require("./../middleware/authMiddleware");
+    getCustomerPriceLists,
+    getCustomerPriceListById,
+    createCustomerPriceList,
+    updateCustomerPriceList,
+    deleteCustomerPriceList
+} = require("../controllers/priceListController");
 
-// Apply auth middleware
-router.use(protect);
+// @desc    GET all price lists or CREATE new one
+// @route   GET /api/price-lists
+// @route   POST /api/price-lists
+router.route("/")
+    .get(protect, getCustomerPriceLists)
+    .post(protect, admin, createCustomerPriceList);
 
-// Route for uploading a price list (likely CSV)
-// Needs middleware to handle file uploads (e.g., multer)
-// router.post("/upload", upload.single("priceListFile"), uploadPriceList);
-// For now, let's assume the controller handles data passed in the body
-router.post("/upload", uploadPriceList); // Placeholder: expects parsed data in body
-
-// Routes specific to a client's price list
-router.route("/client/:clientId")
-    .get(getPriceListForClient) // Get the price list for a specific client
-    .put(updatePriceList)       // Update the price list for a client
-    .delete(deletePriceList);   // Delete the price list for a client
+// @desc    GET, UPDATE, DELETE single price list
+// @route   GET /api/price-lists/:id
+// @route   PUT /api/price-lists/:id
+// @route   DELETE /api/price-lists/:id
+router.route("/:id")
+    .get(protect, getCustomerPriceListById)
+    .put(protect, admin, updateCustomerPriceList)
+    .delete(protect, admin, deleteCustomerPriceList);
 
 module.exports = router;
-
