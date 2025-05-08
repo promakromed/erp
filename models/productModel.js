@@ -13,11 +13,13 @@ const supplierOfferSchema = new mongoose.Schema({
     },
     originalPrice: {
         type: Number,
-        default: 0
+        default: 0,
+        required: true
     },
     originalCurrency: {
         type: String,
-        default: "USD"
+        default: "USD",
+        required: true
     },
     usdPrice: {
         type: Number,
@@ -25,7 +27,8 @@ const supplierOfferSchema = new mongoose.Schema({
     },
     minOrderQty: {
         type: Number,
-        default: 1
+        default: 1,
+        required: true
     },
     discountTiers: [{
         quantity: { type: Number, default: 1 },
@@ -43,13 +46,14 @@ const productSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        index: true
+        index: true,
+        unique: true // or with manufacturer if needed
     },
     manufacturer: {
         type: String,
+        required: true,
         trim: true,
-        index: true,
-        required: true
+        index: true
     },
     brand: {
         type: String,
@@ -99,9 +103,10 @@ const productSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Optional: Add indexes for faster queries
+// Indexes for faster queries
 productSchema.index({ manufacturer: 1 });
-productSchema.index({ itemNo: 1, manufacturer: 1 }, { unique: true }); // Ensure uniqueness if needed
+productSchema.index({ itemNo: 1, manufacturer: 1 }, { unique: true }); // Enforce uniqueness if needed
+productSchema.index({ itemNo: 1 }, { collation: { locale: "en", strength: 2 } });
 
-// Export the model
+// Export model
 module.exports = mongoose.model("Product", productSchema);
