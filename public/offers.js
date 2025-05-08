@@ -78,7 +78,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateAndDisplayItemPrice(rowElement) {
         const isManual = rowElement.dataset.isManual === "true";
-
         if (isManual && !rowElement.querySelector(".item-number").value && !rowElement.querySelector(".item-description").value) {
             return; // Skip blank manual rows
         }
@@ -88,7 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const marginInput = rowElement.querySelector(".item-margin-percent");
         const unitPriceDisplay = rowElement.querySelector(".unit-price-display");
         const lineTotalDisplay = rowElement.querySelector(".line-total-display");
-
         const quantity = parseInt(quantityInput.value) || 0;
         let itemMarginPercent = marginInput?.value.trim() !== "" ? parseFloat(marginInput.value) : null;
         let effectiveMarginPercent = itemMarginPercent ?? parseFloat(globalMarginInput.value) ?? 0;
@@ -184,8 +182,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (!response.ok) {
                 let errorData = { message: `HTTP error! status: ${response.status}` };
-                try { errorData = await response.json(); } catch (e) {}
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                try { errorData = await response.json(); } catch {}
+                throw new Error(errorData.message || `Server error: ${response.status}`);
             }
 
             const offers = await response.json();
@@ -226,10 +224,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${formatDateEuropean(offer.validityDate)}</td>
                 <td><span class="badge bg-${getStatusColor(offer.status)}">${offer.status}</span></td>
                 <td>
-                    <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}" title="View/Edit"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? 'disabled title="Only Draft offers can be deleted"' : 'title="Delete"'}>
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? 'disabled title="Only Draft offers can be deleted"' : ''}><i class="fas fa-trash-alt"></i></button>
                     <button class="btn btn-sm btn-secondary pdf-btn" data-id="${offer._id}" title="Generate PDF"><i class="fas fa-file-pdf"></i></button>
                     <button class="btn btn-sm btn-success csv-btn" data-id="${offer._id}" title="Generate CSV"><i class="fas fa-file-csv"></i></button>
                 </td>
@@ -348,8 +344,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function addLineItemRow(itemData, isManualEntry = false) {
-        console.log("DEBUG: addLineItemRow - Called with itemData:", JSON.stringify(itemData), "isManualEntry:", isManualEntry);
-
         if (!lineItemsBody) return;
         const row = lineItemsBody.insertRow();
 
@@ -359,26 +353,21 @@ document.addEventListener("DOMContentLoaded", () => {
         let initialMargin = "";
 
         if (isManualEntry) {
-            console.log("DEBUG: Manual Entry branch");
+            // Manual entry – no product data
         } else if (itemData && typeof itemData === "object") {
             if (itemData.productId && typeof itemData.productId === "object") {
-                console.log("DEBUG: Editing Offer branch");
                 productRef = itemData.productId;
                 basePriceUSD = itemData.basePriceUSDForMarginApplication || productRef.basePriceUSDForMarginApplication || 0;
                 initialQuantity = itemData.quantity || 1;
                 initialMargin = itemData.marginPercent !== undefined && itemData.marginPercent !== null ? itemData.marginPercent.toString() : "";
             } else if (itemData.data && typeof itemData.data === "object") {
-                console.log("DEBUG: Bulk Add branch");
                 productRef = itemData.data;
                 basePriceUSD = productRef.basePriceUSDForMarginApplication || 0;
             } else {
-                console.log("DEBUG: Fallback branch");
                 productRef = itemData;
                 basePriceUSD = productRef.basePriceUSDForMarginApplication || 0;
             }
         }
-
-        console.log("DEBUG: Final productRef before use:", JSON.stringify(productRef));
 
         row.dataset.isManual = isManualEntry.toString();
         row.dataset.basePriceForMargin = basePriceUSD.toString();
@@ -388,14 +377,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const manufacturerValue = productRef.manufacturer || "";
         const descriptionValue = productRef.description || "";
 
-        console.log("DEBUG: Values for HTML - itemNo:", itemNoValue, "manufacturer:", manufacturerValue, "description:", descriptionValue);
-
         row.innerHTML = `
             <td><input type="text" class="form-control item-number" value="${itemNoValue}" ${isManualEntry ? "" : "readonly"}></td>
             <td><input type="text" class="form-control item-manufacturer" value="${manufacturerValue}" ${isManualEntry ? "" : "readonly"}></td>
             <td><input type="text" class="form-control item-description" value="${descriptionValue}" ${isManualEntry ? "" : "readonly"}></td>
-            <td><input type="number" class="form-control item-quantity" value="${initialQuantity}" min="1"></td>
-            <td><input type="number" step="0.01" class="form-control item-margin-percent" value="${initialMargin}" placeholder="Global"></td>
+            <td><input type="number" class="form-control item-quantity" value="1" min="1"></td>
+            <td><input type="number" step="0.01" class="form-control item-margin-percent" value="" placeholder="Global"></td>
             <td><span class="unit-price-display">0.00</span></td>
             <td><span class="line-total-display">0.00</span></td>
             <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
@@ -417,58 +404,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const lineItems = [];
         const rows = lineItemsBody.querySelectorAll("tr");
-        if (rows.length === 0) {
-            showError("At least one line item is required.");
-            return;
-        }
-
-        let validItems = true;
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const isManual = row.dataset.isManual === "true";
             const productId = isManual ? null : row.dataset.productId;
-            const itemNoInput = row.querySelector(".item-number");
-            const descriptionInput = row.querySelector(".item-description");
-            const quantityInput = row.querySelector(".item-quantity");
+            const itemNo = row.querySelector(".item-number").value.trim();
+            const description = row.querySelector(".item-description").value.trim();
+            const quantity = parseInt(row.querySelector(".item-quantity").value);
 
-            const itemNo = itemNoInput?.value.trim() || "";
-            const description = descriptionInput?.value.trim() || "";
-            const quantity = parseInt(quantityInput?.value) || 0;
-
-            if (isManual && !itemNo && !description && !quantity) continue;
+            if (isManual && !itemNo && !description && quantity <= 0) continue;
 
             if (!description || quantity <= 0) {
                 showError("Description and quantity are required for all non-blank items.");
-                validItems = false;
-                break;
+                return;
             }
 
             lineItems.push({
-                productId: productId,
-                itemNo: itemNo,
-                description: description,
-                quantity: quantity,
-                marginPercent: row.querySelector(".item-margin-percent")?.value.trim() || "",
-                isManual: isManual,
+                productId,
+                itemNo,
+                description,
+                quantity,
+                marginPercent: row.querySelector(".item-margin-percent").value.trim(),
+                isManual,
                 basePriceUSDForMarginApplication: parseFloat(row.dataset.basePriceForMargin) || 0
             });
         }
 
-        if (!validItems) return;
-
         if (lineItems.length === 0) {
-            showError("At least one non-blank line item is required.");
+            showError("At least one item is required.");
             return;
         }
 
         const offerData = {
-            client: client,
+            client,
             validityDate: validityInput.value,
             terms: termsInput.value,
             status: statusSelect.value,
-            globalMarginPercent: globalMarginInput.value.trim() === "" ? null : parseFloat(globalMarginInput.value),
-            lineItems: lineItems,
+            globalMarginPercent: globalMarginInput.value.trim() ? parseFloat(globalMarginInput.value) : null,
+            lineItems
         };
 
         const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
@@ -479,7 +453,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             const response = await fetch(url, {
-                method: method,
+                method,
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
@@ -490,8 +464,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showLoading(false);
 
             if (!response.ok) {
-                let errorData = { message: `Server error: ${response.status}` };
-                try { errorData = await response.json(); } catch (e) {}
+                const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
 
@@ -504,61 +477,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function loadOfferForEditing(id) {
-        const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
-        showLoading(true);
-        showError("");
-
-        try {
-            const response = await fetch(`/api/offers/${id}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-
-            showLoading(false);
-
-            if (!response.ok) {
-                let errorData = { message: `HTTP error! status: ${response.status}` };
-                try { errorData = await response.json(); } catch (e) {}
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-
-            const offer = await response.json();
-            showOfferForm(offer);
-        } catch (error) {
-            showLoading(false);
-            showError(`Error loading offer: ${error.message}. Please try again.`);
-        }
-    }
-
-    async function deleteOffer(id) {
-        const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
-        showLoading(true);
-        showError("");
-
-        try {
-            const response = await fetch(`/api/offers/${id}`, {
-                method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-
-            showLoading(false);
-
-            if (!response.ok) {
-                let errorData = { message: `HTTP error! status: ${response.status}` };
-                try { errorData = await response.json(); } catch (e) {}
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-
-            alert("Offer deleted successfully!");
-            loadOffers();
-        } catch (error) {
-            showLoading(false);
-            showError(`Error deleting offer: ${error.message}. Please try again.`);
-        }
-    }
-
     async function handleBulkAddItems() {
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
@@ -567,7 +485,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const partNumbers = bulkAddPartNumbersTextarea.value
             .split(/[\n,]+/)
             .map(pn => pn.trim())
-            .filter(pn => pn);
+            .filter(Boolean);
 
         if (!manufacturer) {
             showBulkAddStatus("Please select a manufacturer.", true);
@@ -595,37 +513,85 @@ document.addEventListener("DOMContentLoaded", () => {
             showLoading(false);
 
             if (!response.ok) {
-                let errorData = { message: `Server error: ${response.status}` };
-                try { errorData = await response.json(); } catch (e) {}
-                throw new Error(errorData.message || `Server error: ${response.status}`);
+                throw new Error(`Server error: ${response.status}`);
             }
 
-            const products = await response.json();
+            const results = await response.json();
 
-            console.log("DEBUG: Products received from bulk lookup:", products);
+            const validProducts = results
+                .filter(p => p.found)
+                .map(p => p.data);
 
-            if (products.length === 0) {
-                showBulkAddStatus("No products found for the given criteria.", true);
-            } else {
-                const validProducts = products.filter(p => p.found).map(p => p.data);
-
-                validProducts.forEach(product => {
-                    console.log("DEBUG: Calling addLineItemRow with product:", JSON.stringify(product));
-                    addLineItemRow(product, false); // Pass raw product object
-                });
-
-                showBulkAddStatus(`Added ${validProducts.length} products.`, false);
+            if (validProducts.length === 0) {
+                showBulkAddStatus("No matching products found.", true);
+                return;
             }
+
+            validProducts.forEach(product => {
+                addLineItemRow(product, false);
+            });
+
+            showBulkAddStatus(`Added ${validProducts.length} products.`, false);
         } catch (error) {
             showLoading(false);
-            showBulkAddStatus(`Error adding bulk items: ${error.message}`, true);
-            console.error("DEBUG: Bulk add error:", error);
+            showBulkAddStatus(`Error adding items: ${error.message}`, true);
+        }
+    }
+
+    async function loadOfferForEditing(id) {
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+        showLoading(true);
+        showError("");
+
+        try {
+            const response = await fetch(`/api/offers/${id}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            showLoading(false);
+
+            if (!response.ok) throw new Error(`Offer not found. Status: ${response.status}`);
+
+            const offer = await response.json();
+            showOfferForm(offer);
+        } catch (error) {
+            showLoading(false);
+            showError(`Error loading offer: ${error.message}. Please try again.`);
+        }
+    }
+
+    async function deleteOffer(id) {
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+
+        if (!confirm("Are you sure you want to delete this offer?")) return;
+
+        showLoading(true);
+        showError("");
+
+        try {
+            const response = await fetch(`/api/offers/${id}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            showLoading(false);
+
+            if (!response.ok) throw new Error(`Error deleting offer: ${response.status}`);
+
+            alert("Offer deleted successfully!");
+            showOfferList();
+        } catch (error) {
+            showLoading(false);
+            showError(`Error deleting offer: ${error.message}. Please try again.`);
         }
     }
 
     async function generateOfferOutput(offerId, format) {
         const token = getAuthToken();
         if (!token) { showError("Authentication error. Please log in again."); return; }
+
         showLoading(true);
         showError("");
 
@@ -636,25 +602,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             showLoading(false);
 
-            if (!response.ok) {
-                let errorText = `Error generating ${format.toUpperCase()}: ${response.status}`;
-                try {
-                    const errorBlob = await response.blob();
-                    if (errorBlob.type.includes("json")) {
-                        const errorJson = await errorBlob.json();
-                        errorText = errorJson.message || errorText;
-                    }
-                } catch (e) {}
-
-                throw new Error(errorText);
-            }
+            if (!response.ok) throw new Error(`Error generating ${format.toUpperCase()}: ${response.status}`);
 
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
             a.download = `offer_${offerId}.${format}`;
-            a.style.display = "none";
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
