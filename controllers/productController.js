@@ -1,10 +1,9 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/productModel");
 
-// Helper function for exchange rate (copied from offerController.js)
+// Helper function for exchange rates (copied from offerController.js)
 const getExchangeRate = async (fromCurrency, toCurrency) => {
     if (fromCurrency === toCurrency) return 1;
-    // These are placeholder rates — replace with a real API or dynamic source later
     if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
     if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
     console.warn(`Exchange rate not found for ${fromCurrency} to ${toCurrency}, using 1 as default.`);
@@ -44,7 +43,7 @@ const getManufacturers = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Search products by item number or description (Diagnostic)
+// @desc    Search products by item number or description
 // @route   GET /api/products/search
 const searchProducts = asyncHandler(async (req, res) => {
     const query = req.query.query || "";
@@ -57,9 +56,7 @@ const searchProducts = asyncHandler(async (req, res) => {
 const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) => {
     const { manufacturer, partNumbers } = req.body;
 
-    console.log(
-        `DEBUG: getProductsByManufacturerAndPartNumbers called with mfg: ${manufacturer}, parts: ${partNumbers}`
-    );
+    console.log(`DEBUG: getProductsByManufacturerAndPartNumbers called with mfg: ${manufacturer}, parts: ${partNumbers}`);
 
     if (!manufacturer || !partNumbers || !Array.isArray(partNumbers) || partNumbers.length === 0) {
         return res.status(400).json({
@@ -68,8 +65,7 @@ const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) =>
     }
 
     try {
-        // Fetch products. Ensure supplierOffers are included if they are part of the schema.
-        // .lean() is good for performance.
+        // Fetch products
         const foundProducts = await Product.find({
             manufacturer: manufacturer,
             itemNo: { $in: partNumbers },
@@ -86,59 +82,36 @@ const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) =>
                         const rate = await getExchangeRate(product.baseCurrency || "USD", "USD");
                         basePriceUSDForMarginApplication = product.basePrice * rate;
                         if ((product.baseCurrency || "USD") !== "USD") {
-                            basePriceUSDForMarginApplication *= 1.03; // 3% currency protection
+                            basePriceUSDForMarginApplication *= 1.03; // Apply 3% currency protection
                             console.log(
-                                `DEBUG (bulkLookup ${pn}): Applied 3% protection to Product's own basePrice. USD for margin: ${basePriceUSDForMarginApplication.toFixed(
-                                    2
-                                )}`
+                                `DEBUG (bulkLookup ${pn}): Applied 3% protection to Product's own basePrice. USD for margin: ${basePriceUSDForMarginApplication.toFixed(2)}`
                             );
                         }
                     }
                     // Priority 2: Lowest Supplier Offer (if product's own basePrice is not usable)
-                    else if (
-                        product.supplierOffers &&
-                        product.supplierOffers.length > 0
-                    ) {
+                    else if (product.supplierOffers && product.supplierOffers.length > 0) {
                         let lowestSupplierPriceUSDWithProtection = Infinity;
                         for (const supOffer of product.supplierOffers) {
-                            if (
-                                supOffer.originalPrice &&
-                                supOffer.originalCurrency
-                            ) {
-                                const supplierRate = await getExchangeRate(
-                                    supOffer.originalCurrency,
-                                    "USD"
-                                );
-                                let supplierPriceInUSD =
-                                    supOffer.originalPrice * supplierRate;
+                            if (supOffer.originalPrice && supOffer.originalCurrency) {
+                                const supplierRate = await getExchangeRate(supOffer.originalCurrency, "USD");
+                                let supplierPriceInUSD = supOffer.originalPrice * supplierRate;
                                 if (supOffer.originalCurrency !== "USD") {
-                                    supplierPriceInUSD *= 1.03; // 3% currency protection
+                                    supplierPriceInUSD *= 1.03; // Apply 3% currency protection
                                 }
-                                if (
-                                    supplierPriceInUSD <
-                                    lowestSupplierPriceUSDWithProtection
-                                ) {
-                                    lowestSupplierPriceUSDWithProtection =
-                                        supplierPriceInUSD;
+                                if (supplierPriceInUSD < lowestSupplierPriceUSDWithProtection) {
+                                    lowestSupplierPriceUSDWithProtection = supplierPriceInUSD;
                                 }
                             }
                         }
-                        if (
-                            lowestSupplierPriceUSDWithProtection !== Infinity
-                        ) {
-                            basePriceUSDForMarginApplication =
-                                lowestSupplierPriceUSDWithProtection;
+                        if (lowestSupplierPriceUSDWithProtection !== Infinity) {
+                            basePriceUSDForMarginApplication = lowestSupplierPriceUSDWithProtection;
                             console.log(
-                                `DEBUG (bulkLookup ${pn}): Using lowest supplier offer. USD for margin (with protection): ${basePriceUSDForMarginApplication.toFixed(
-                                    2
-                                )}`
+                                `DEBUG (bulkLookup ${pn}): Using lowest supplier offer. USD for margin (with protection): ${basePriceUSDForMarginApplication.toFixed(2)}`
                             );
                         }
                     }
 
-                    product.basePriceUSDForMarginApplication = parseFloat(
-                        basePriceUSDForMarginApplication.toFixed(2)
-                    );
+                    product.basePriceUSDForMarginApplication = parseFloat(basePriceUSDForMarginApplication.toFixed(2));
 
                     return {
                         itemNumber: pn,
@@ -155,17 +128,11 @@ const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) =>
             })
         );
 
-        console.log(
-            "DEBUG: Bulk lookup results with basePriceUSDForMarginApplication:",
-            JSON.stringify(results, null, 2)
-        );
+        console.log("DEBUG: Bulk lookup results with basePriceUSDForMarginApplication:", JSON.stringify(results, null, 2));
         res.json(results);
     } catch (error) {
         console.error("Error in bulk product lookup:", error);
-        res.status(500).json({
-            message:
-                "Server error during bulk product lookup. Please try again.",
-        });
+        res.status(500).json({ message: "Server error during bulk product lookup." });
     }
 });
 
