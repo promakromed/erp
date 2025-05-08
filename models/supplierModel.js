@@ -1,22 +1,73 @@
 const mongoose = require("mongoose");
 
-const supplierSchema = mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      unique: true, // Ensure supplier names are unique
-      trim: true,
+const supplierSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: [true, "Supplier name is required"],
+            unique: true,
+            trim: true,
+            index: true
+        },
+        contactPerson: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+        phoneCountryCode: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+        phoneNumber: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+        fullPhoneNumber: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+        email: {
+            type: String,
+            trim: true,
+            match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+            default: ""
+        },
+        address: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+        city: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+        country: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+        notes: {
+            type: String,
+            default: ""
+        }
     },
-    // Add other supplier-specific fields here if needed in the future
-    // e.g., contactInfo, address, etc.
-  },
-  {
-    timestamps: true, // Adds createdAt and updatedAt timestamps
-  }
+    {
+        timestamps: true
+    }
 );
 
-const Supplier = mongoose.model("Supplier", supplierSchema);
+// Optional: Virtual for full phone number
+supplierSchema.virtual("phoneNumberDisplay").get(function () {
+    return this.fullPhoneNumber || (this.phoneCountryCode && this.phoneNumber ? `${this.phoneCountryCode} ${this.phoneNumber}` : "");
+});
 
-module.exports = Supplier;
+// Enable virtuals in JSON output
+supplierSchema.set("toJSON", { virtuals: true });
+supplierSchema.set("toObject", { virtuals: true });
 
+// Export the model
+module.exports = mongoose.model("Supplier", supplierSchema);
