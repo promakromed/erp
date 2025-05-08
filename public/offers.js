@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     console.log("DEBUG: DOMContentLoaded event fired");
 
-    // Element References
+    // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
     const offerFormSection = document.getElementById("offer-form-section");
     const offerListContainer = document.getElementById("offer-list-container");
@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateAndDisplayItemPrice(rowElement) {
         const isManual = rowElement.dataset.isManual === "true";
+
         if (isManual && !rowElement.querySelector(".item-number").value && !rowElement.querySelector(".item-description").value) {
             return; // Skip blank manual rows
         }
@@ -87,8 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const marginInput = rowElement.querySelector(".item-margin-percent");
         const unitPriceDisplay = rowElement.querySelector(".unit-price-display");
         const lineTotalDisplay = rowElement.querySelector(".line-total-display");
-        const quantity = parseInt(quantityInput.value) || 0;
 
+        const quantity = parseInt(quantityInput.value) || 0;
         let itemMarginPercent = marginInput?.value.trim() !== "" ? parseFloat(marginInput.value) : null;
         let effectiveMarginPercent = itemMarginPercent ?? parseFloat(globalMarginInput.value) ?? 0;
 
@@ -606,13 +607,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (products.length === 0) {
                 showBulkAddStatus("No products found for the given criteria.", true);
             } else {
-                const validProducts = products
-                    .filter(p => p.found)
-                    .map(p => p.data);
+                const validProducts = products.filter(p => p.found).map(p => p.data);
 
                 validProducts.forEach(product => {
                     console.log("DEBUG: Calling addLineItemRow with product:", JSON.stringify(product));
-                    addLineItemRow(product, false);
+                    addLineItemRow(product, false); // Pass raw product object
                 });
 
                 showBulkAddStatus(`Added ${validProducts.length} products.`, false);
