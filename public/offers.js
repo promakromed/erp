@@ -1,4 +1,4 @@
-// /home/ubuntu/erp/public/offers.js (v13 - Fix for bulk add initial price display)
+// /home/ubuntu/erp/public/offers.js (v14 - Fix syntax error, ensure bulk add price display)
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("DEBUG (v13): DOMContentLoaded event fired");
