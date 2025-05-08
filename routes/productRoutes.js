@@ -13,40 +13,34 @@ const {
     getProductsByManufacturerAndPartNumbers
 } = require("../controllers/productController");
 
+// Specific routes before parameterized routes
+
 // @desc    Fetch all products
 // @route   GET /api/products
-// @access  Private
 router.route("/").get(protect, getProducts);
-
-// IMPORTANT: Specific routes must come before parameterized routes like /:id
 
 // @desc    Get distinct manufacturers
 // @route   GET /api/products/manufacturers
-// @access  Private
-router.route("/manufacturers").get(protect, getManufacturers); // This line was broken
+router.route("/manufacturers").get(protect, getManufacturers);
 
 // @desc    Search products by item number or description
 // @route   GET /api/products/search
-// @access  Private
 router.route("/search").get(protect, searchProducts);
 
 // @desc    Get products by manufacturer and part numbers (for Offer bulk add)
 // @route   POST /api/products/bulk-lookup
-// @access  Private
 router.route("/bulk-lookup").post(protect, getProductsByManufacturerAndPartNumbers);
 
-// Parameter routes must come after specific routes
+// Parameter routes after specific ones
 
 // @desc    Fetch single product
 // @route   GET /api/products/:id
-// @access  Private
 router.route("/:id").get(protect, getProductById);
 
-// Admin-only routes
+// --- Admin Routes ---
 
 // @desc    Create a product
 // @route   POST /api/products
-// @access  Private/Admin
 router.route("/").post(protect, admin, async (req, res) => {
     try {
         const Product = require("../models/productModel");
@@ -61,7 +55,6 @@ router.route("/").post(protect, admin, async (req, res) => {
 
 // @desc    Update a product
 // @route   PUT /api/products/:id
-// @access  Private/Admin
 router.route("/:id").put(protect, admin, async (req, res) => {
     try {
         const Product = require("../models/productModel");
@@ -85,14 +78,13 @@ router.route("/:id").put(protect, admin, async (req, res) => {
 
 // @desc    Delete a product
 // @route   DELETE /api/products/:id
-// @access  Private/Admin
 router.route("/:id").delete(protect, admin, async (req, res) => {
     try {
         const Product = require("../models/productModel");
         const product = await Product.findById(req.params.id);
 
         if (product) {
-            await product.deleteOne(); // Use deleteOne instead of remove (deprecated)
+            await product.deleteOne(); // Use deleteOne() instead of remove()
             res.json({ message: "Product removed" });
         } else {
             res.status(404).json({ message: "Product not found" });
