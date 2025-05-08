@@ -1,24 +1,41 @@
 const express = require("express");
 const router = express.Router();
+
+// Middleware
+const { protect, admin } = require("../middleware/authMiddleware");
+
+// Controller functions
 const {
-  getClients,
-  setClient,
-  updateClient,
-  deleteClient,
-  getClientById, // Optional: If needed for viewing/editing single client details
+    getClients,
+    getClientById,
+    createClient,
+    updateClient,
+    deleteClient
 } = require("../controllers/clientController");
 
-const { protect } = require("../middleware/authMiddleware");
+// @desc    Get all clients
+// @route   GET /api/clients
+// @access  Private
+router.route("/").get(protect, getClients);
 
-// Route for getting all clients and creating a new client
-router.route("/").get(protect, getClients).post(protect, setClient);
+// @desc    Create a client
+// @route   POST /api/clients
+// @access  Private/Admin
+router.route("/").post(protect, admin, createClient);
 
-// Route for getting, updating, and deleting a specific client by ID
-router
-  .route("/:id")
-  .get(protect, getClientById) // Optional: Add if a dedicated view/edit page per client is planned
-  .put(protect, updateClient)
-  .delete(protect, deleteClient);
+// @desc    Get single client
+// @route   GET /api/clients/:id
+// @access  Private
+router.route("/:id").get(protect, getClientById);
+
+// @desc    Update client
+// @route   PUT /api/clients/:id
+// @access  Private/Admin
+router.route("/:id").put(protect, admin, updateClient);
+
+// @desc    Delete client
+// @route   DELETE /api/clients/:id
+// @access  Private/Admin
+router.route("/:id").delete(protect, admin, deleteClient);
 
 module.exports = router;
-
