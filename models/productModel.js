@@ -1,196 +1,107 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const productSchema = mongoose.Schema(
-  {
-    // Basic product information
+// Define Supplier Offer Subdocument Schema
+const supplierOfferSchema = new mongoose.Schema({
+    supplier: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Supplier",
+        required: true
+    },
+    catalogNo: {
+        type: String,
+        trim: true
+    },
+    originalPrice: {
+        type: Number,
+        default: 0
+    },
+    originalCurrency: {
+        type: String,
+        default: "USD"
+    },
+    usdPrice: {
+        type: Number,
+        default: 0
+    },
+    minOrderQty: {
+        type: Number,
+        default: 1
+    },
+    discountTiers: [{
+        quantity: { type: Number, default: 1 },
+        price: { type: Number, default: 0 }
+    }],
+    lastUpdated: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
+// Define Product Schema
+const productSchema = new mongoose.Schema({
     itemNo: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
+        type: String,
+        required: true,
+        trim: true,
+        index: true
     },
-    description: {
-      type: String,
-      required: true,
-    },
-    alternateDescription: {
-      type: String,
-      required: false,
-    },
-    
-    // Product specifications
-    size: {
-      type: String,
-      required: false,
-    },
-    unit: {
-      type: String,
-      required: false,
-    },
-    weight: {
-      type: Number,
-      required: false,
-    },
-    weightUnit: {
-      type: String,
-      required: false,
-    },
-    
-    // Product categorization
     manufacturer: {
-      type: String,
-      required: false,
+        type: String,
+        trim: true,
+        index: true,
+        required: true
     },
     brand: {
-      type: String,
-      required: false,
+        type: String,
+        trim: true
     },
-    category: {
-      type: String,
-      required: false,
+    description: {
+        type: String,
+        required: true,
+        trim: true
     },
-    subcategory: {
-      type: String,
-      required: false,
+    size: {
+        type: String,
+        trim: true
     },
-    
-    // Customs and regulatory information
-    hsCode: {
-      type: String,
-      required: false,
+    basePrice: {
+        type: Number,
+        default: null
     },
-    countryOfOrigin: {
-      type: String,
-      required: false,
+    baseCurrency: {
+        type: String,
+        default: "USD"
     },
-    regulatoryInfo: {
-      type: Map,
-      of: String,
-      required: false,
+    isActive: {
+        type: Boolean,
+        default: true
     },
-    
-    // Supplier offers with pricing information (references Supplier model)
-    supplierOffers: [
-      {
-        supplier: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Supplier', // Links to the Supplier model
-          required: true
-        },
-        originalPrice: { // Price in original currency from CSV
-          type: Number,
-          required: true,
-        },
-        originalCurrency: { // Currency from CSV (e.g., GBP, EUR)
-          type: String,
-          required: true,
-        },
-        usdPrice: { // Calculated USD equivalent price
-          type: Number,
-          required: true,
-        },
-        supplierItemNo: { // Specific to this product-supplier link
-          type: String,
-          required: false,
-        },
-        catalogNo: { // Specific to this product-supplier link
-          type: String,
-          required: false,
-        },
-        leadTime: {
-          type: String,
-          required: false,
-        },
-        minOrderQty: {
-          type: Number,
-          required: false,
-          default: 1,
-        },
-        discountTiers: [
-          {
-            quantity: Number,
-            price: Number, // Assuming discount price is also in original currency?
-          }
-        ],
-        lastUpdated: {
-          type: Date,
-          default: Date.now,
-        }
-      }
-    ],
-    
-    // Pricing and margin information
-    sellingPrice: {
-      type: Number,
-      required: false,
+    inStock: {
+        type: Number,
+        default: 0
     },
     defaultMargin: {
-      type: Number,
-      default: 1.3, // 30% margin by default
-      required: false,
+        type: Number,
+        default: null
     },
-    pricingNotes: {
-      type: String,
-      required: false,
-    },
-    
-    // Inventory information
-    inStock: {
-      type: Number,
-      required: false,
-      default: 0,
-    },
-    reorderPoint: {
-      type: Number,
-      required: false,
-    },
-    location: {
-      type: String,
-      required: false,
-    },
-    
-    // Additional custom fields
-    customFields: {
-      type: Map,
-      of: mongoose.Schema.Types.Mixed,
-      required: false,
-    },
-    
-    // Document attachments (datasheets, images, etc.)
-    attachments: [
-      {
-        name: String,
-        fileType: String,
-        url: String,
-        uploadDate: {
-          type: Date,
-          default: Date.now,
+    attachments: [{
+        fileName: String,
+        fileUrl: String,
+        uploadedAt: {
+            type: Date,
+            default: Date.now
         }
-      }
-    ],
-    
-    // Status and visibility
-    isActive: {
-      type: Boolean,
-      default: true,
+    }],
+    supplierOffers: [supplierOfferSchema],
+    basePriceUSDForMarginApplication: {
+        type: Number,
+        default: 0
     }
-  },
-  {
-    timestamps: true,
-  }
-);
+}, { timestamps: true });
 
-// Add text index for search functionality
-productSchema.index({ 
-  itemNo: 'text', 
-  description: 'text', 
-  alternateDescription: 'text',
-  manufacturer: 'text',
-  brand: 'text',
-  hsCode: 'text'
-});
+// Optional: Add indexes for faster queries
+productSchema.index({ manufacturer: 1 });
+productSchema.index({ itemNo: 1, manufacturer: 1 }, { unique: true }); // Ensure uniqueness if needed
 
-const Product = mongoose.model('Product', productSchema);
-
-module.exports = Product;
-
+// Export the model
+module.exports = mongoose.model("Product", productSchema);
