@@ -1,204 +1,338 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Management - PRO MAKROMED ERP</title> <!-- Updated Title -->
-    <!-- Link Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Link shared custom styles -->
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        /* Add style for header logo */
-        .header-logo {
-          height: 40px; /* Adjust height as needed */
-          margin-right: 10px;
+// Set API URL based on environment
+const API_URL = 'https://proerp-b0dfb327892c.herokuapp.com/api ';
+// const API_URL = 'http://localhost:5000/api'; // For local dev
+
+// DOM Elements
+const loginContainer = document.getElementById("login-container");
+const mainContainer = document.getElementById("main-container");
+const logoutButton = document.getElementById("logout-button");
+
+// Client Form Elements
+const clientForm = document.getElementById("client-form");
+const clientIdField = document.getElementById("clientId");
+const companyNameInput = document.getElementById("companyName");
+const clientNameInput = document.getElementById("clientName");
+const emailInput = document.getElementById("email");
+const phoneCountryCodeSelect = document.getElementById("phoneCountryCode");
+const phoneNumberInput = document.getElementById("phoneNumber");
+const addressInput = document.getElementById("address");
+const cityInput = document.getElementById("city");
+const countrySelect = document.getElementById("country");
+const saveClientBtn = document.querySelector("#client-form button[type='submit']");
+const cancelEditButton = document.getElementById("cancel-edit-button");
+
+// Table Elements
+const clientTableBody = document.querySelector('#client-table tbody');
+const clientListMessage = document.getElementById('client-list-message');
+const clientFormMessage = document.getElementById('client-form-message');
+
+// Helper Functions
+function getAuthToken() {
+    const userInfoString = localStorage.getItem('userInfo');
+    if (!userInfoString) return null;
+    try {
+        const userInfo = JSON.parse(userInfoString);
+        return userInfo.token || null;
+    } catch (e) {
+        console.error("Failed to parse userInfo:", e);
+        return null;
+    }
+}
+
+function showMessage(element, message, isError = false) {
+    if (!element) return;
+    element.textContent = message;
+    element.className = isError ? 'message error' : 'message success';
+    element.style.display = 'block';
+
+    if (element.timeoutId) clearTimeout(element.timeoutId);
+    element.timeoutId = setTimeout(() => {
+        element.style.display = 'none';
+        element.textContent = '';
+    }, 5000);
+}
+
+function checkAuth() {
+    const token = getAuthToken();
+    if (!token) {
+        window.location.href = '/login.html';
+        return false;
+    }
+
+    const userNameElement = document.getElementById('user-name');
+    if (userNameElement) {
+        try {
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            userNameElement.textContent = userInfo?.name || "User";
+        } catch (e) {}
+    }
+
+    if (loginContainer) loginContainer.style.display = "none";
+    if (mainContainer) mainContainer.style.display = "block";
+
+    return true;
+}
+
+function populatePhoneCountryCodes() {
+    const phoneCountryCodeSelect = document.getElementById('phoneCountryCode');
+    if (!phoneCountryCodeSelect) return;
+
+    phoneCountryCodeSelect.innerHTML = '<option value="">Code</option>';
+
+    countryCallingCodes.forEach(country => {
+        const option = document.createElement('option');
+        option.value = country.code;
+        option.textContent = country.name;
+        phoneCountryCodeSelect.appendChild(option);
+    });
+}
+
+function populateCountries() {
+    const countrySelect = document.getElementById('country');
+    if (!countrySelect) return;
+
+    countrySelect.innerHTML = '<option value="">Select Country</option>';
+    countries.forEach(countryName => {
+        const option = document.createElement('option');
+        option.value = countryName;
+        option.textContent = countryName;
+        countrySelect.appendChild(option);
+    });
+}
+
+async function fetchAndDisplayClients() {
+    if (!clientListMessage) return;
+    showMessage(clientListMessage, 'Loading clients...', false);
+
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            checkAuth();
+            return;
         }
-        /* Keep specific styles minimal, rely on Bootstrap and styles.css */
-        .phone-group {
-            display: flex;
-            align-items: center;
-            gap: 5px; /* Add gap between code and number */
+
+        const response = await fetch(`${API_URL}/clients`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
         }
-        #phoneCountryCode {
-            flex: 0 0 120px; /* Fixed width for country code dropdown */
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        .action-buttons button {
-            margin-right: 5px;
+
+        const clients = await response.json();
+
+        if (!clientTableBody) return;
+        clientTableBody.innerHTML = "";
+
+        if (clients.length === 0) {
+            showMessage(clientListMessage, "No clients found.");
+            return;
         }
-        .message {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 5px;
-            display: none; /* Hidden by default */
+
+        clients.forEach(client => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${client.companyName}</td>
+                <td>${client.clientName || 'N/A'}</td>
+                <td>${client.email || 'N/A'}</td>
+                <td>${client.phoneCountryCode || ''} ${client.phoneNumber || ''}</td>
+                <td>${client.address || 'N/A'}</td>
+                <td>${client.city || 'N/A'}</td>
+                <td>${client.country || 'N/A'}</td>
+                <td class="action-buttons">
+                    <button data-id="${client._id}" class="btn btn-sm btn-warning edit-btn">Edit</button>
+                    <button data-id="${client._id}" class="btn btn-sm btn-danger delete-btn">Delete</button>
+                </td>
+            `;
+            clientTableBody.appendChild(row);
+        });
+
+        clientListMessage.style.display = 'none';
+    } catch (error) {
+        showMessage(clientListMessage, `Error fetching clients: ${error.message}`, true);
+    }
+}
+
+async function handleSaveClient(event) {
+    event.preventDefault();
+    const token = getAuthToken();
+    if (!token) {
+        checkAuth();
+        return;
+    }
+
+    const clientId = clientIdField.value.trim();
+    const clientData = {
+        companyName: companyNameInput.value.trim(),
+        clientName: clientNameInput.value.trim(),
+        email: emailInput.value.trim(),
+        phoneCountryCode: phoneCountryCodeSelect.value,
+        phoneNumber: phoneNumberInput.value.trim(),
+        address: addressInput.value.trim(),
+        city: cityInput.value.trim(),
+        country: countrySelect.value.trim()
+    };
+
+    if (!clientData.companyName || !clientData.email || !clientData.phoneNumber || !clientData.address || !clientData.city || !clientData.country) {
+        showMessage(clientFormMessage, "All fields except client name are required.", true);
+        return;
+    }
+
+    if (!isValidEmail(clientData.email)) {
+        showMessage(clientFormMessage, "Please enter a valid email address.", true);
+        return;
+    }
+
+    if (!isValidPhoneNumber(clientData.phoneNumber)) {
+        showMessage(clientFormMessage, "Please enter a valid phone number.", true);
+        return;
+    }
+
+    showMessage(clientFormMessage, clientId ? "Updating client..." : "Adding client...", false);
+    saveClientBtn.disabled = true;
+    saveClientBtn.textContent = clientId ? "Saving Changes..." : "Saving...";
+
+    try {
+        const url = clientId ? `${API_URL}/clients/${clientId}` : `${API_URL}/clients`;
+        const method = clientId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(clientData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: "Server error" }));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+
+        const savedClient = await response.json();
+        showMessage(clientFormMessage, clientId ? "Client updated successfully!" : "Client added successfully!", false);
+        fetchAndDisplayClients();
+        resetForm();
+    } catch (error) {
+        showMessage(clientFormMessage, `Error saving client: ${error.message}`, true);
+        saveClientBtn.disabled = false;
+        saveClientBtn.textContent = clientId ? "Save Changes" : "Save Client";
+    }
+}
+
+function resetForm() {
+    clientIdField.value = "";
+    clientNameInput.value = "";
+    companyNameInput.value = "";
+    emailInput.value = "";
+    phoneCountryCodeSelect.value = "+90";
+    phoneNumberInput.value = "";
+    addressInput.value = "";
+    cityInput.value = "";
+    countrySelect.value = "Turkey";
+    if (cancelEditButton) cancelEditButton.style.display = "none";
+    saveClientBtn.textContent = "Save Client";
+    saveClientBtn.disabled = false;
+}
+
+async function populateFormForEdit(clientId) {
+    const token = getAuthToken();
+    if (!token) return;
+
+    showMessage(clientFormMessage, "Loading client data...", false);
+
+    try {
+        const response = await fetch(`${API_URL}/clients/${clientId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: "HTTP error" }));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+
+        const client = await response.json();
+        clientIdField.value = client._id;
+        companyNameInput.value = client.companyName;
+        clientNameInput.value = client.clientName || "";
+        emailInput.value = client.email || "";
+        phoneCountryCodeSelect.value = client.phoneCountryCode || "+90";
+        phoneNumberInput.value = client.phoneNumber || "";
+        addressInput.value = client.address || "";
+        cityInput.value = client.city || "";
+        countrySelect.value = client.country || "Turkey";
+        if (cancelEditButton) cancelEditButton.style.display = "inline-block";
+        saveClientBtn.textContent = "Save Changes";
+    } catch (error) {
+        showMessage(clientFormMessage, `Failed to load client: ${error.message}`, true);
+    }
+}
+
+async function handleDeleteClient(clientId) {
+    if (!confirm("Are you sure you want to delete this client?")) return;
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    showMessage(clientListMessage, "Deleting client...", false);
+
+    try {
+        const response = await fetch(`${API_URL}/clients/${clientId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: "HTTP error" }));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-    </style>
-</head>
-<body>
-    <div id="app">
-        <!-- Main App Container (assuming user is logged in to see this page) -->
-        <div id="main-container">
 
-            <!-- Updated Header with Logo Start -->
-            <header class="bg-primary text-white pt-3 pb-2">
-              <div class="container-fluid d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                  <img src="/images/logo.jpg" alt="PRO MAKROMED Logo" class="header-logo">
-                  <h1 class="h3 mb-0">PRO MAKROMED ERP</h1>
-                </div>
-                <div>
-                  <span class="navbar-text me-3" id="user-name"></span>
-                  <button class="btn btn-outline-light btn-sm" id="logout-button">Logout</button>
-                </div>
-              </div>
-              <nav class="navbar navbar-expand-lg navbar-dark bg-primary mt-1">
-                <div class="container-fluid">
-                  <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                  </button>
-                  <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav">
-                      <li class="nav-item">
-                        <a class="nav-link" href="index.html">Search</a>
-                      </li>
-                      <li class="nav-item">
-                        <a class="nav-link active" href="clients.html">Clients</a> <!-- Set active state -->
-                      </li>
-                      <li class="nav-item">
-                        <a class="nav-link" href="offers.html">Offers</a>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </nav>
-            </header>
-            <!-- Updated Header with Logo End -->
+        showMessage(clientListMessage, "Client deleted successfully!", false);
+        fetchAndDisplayClients();
+    } catch (error) {
+        showMessage(clientListMessage, `Error deleting client: ${error.message}`, true);
+    }
+}
 
-            <!-- Main Content Area -->
-            <div class="container mt-4">
-                <!-- Page Content Start -->
-                <div class="row">
-                    <!-- Client Form Section -->
-                    <div class="col-md-5 mb-4">
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">Add/Edit Client</h5>
-                            </div>
-                            <div class="card-body">
-                                <form id="client-form">
-                                    <input type="hidden" id="clientId">
+function logout() {
+    localStorage.removeItem("userInfo");
+    window.location.href = "/login.html";
+}
 
-                                    <div class="mb-3">
-                                        <label for="companyName" class="form-label">Company Name:</label>
-                                        <input type="text" class="form-control" id="companyName" required>
-                                    </div>
+// Event Listeners
+document.addEventListener("DOMContentLoaded", () => {
+    checkAuth();
+    populatePhoneCountryCodes();
+    populateCountries();
+    fetchAndDisplayClients();
 
-                                    <div class="mb-3">
-                                        <label for="clientName" class="form-label">Client Name (Contact):</label>
-                                        <input type="text" class="form-control" id="clientName" required>
-                                    </div>
+    if (clientForm) clientForm.addEventListener("submit", handleSaveClient);
+    if (cancelEditButton) cancelEditButton.addEventListener("click", resetForm);
+    if (logoutButton) logoutButton.addEventListener("click", logout);
+});
 
-                                    <div class="mb-3">
-                                        <label for="email" class="form-label">Email:</label>
-                                        <input type="email" class="form-control" id="email" required>
-                                    </div>
+// Validation functions
+function isValidEmail(email) {
+    const re = /^\S+@\S+\.\S+$/;
+    return re.test(String(email).toLowerCase());
+}
 
-                                    <div class="mb-3">
-                                        <label for="phoneNumber" class="form-label">Phone Number:</label>
-                                        <div class="phone-group">
-                                            <select id="phoneCountryCode" class="form-select" required>
-                                                <option value="">Code</option>
-                                                <!-- Country codes populated by JS -->
-                                            </select>
-                                            <input type="tel" class="form-control" id="phoneNumber" required placeholder="Enter phone number">
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="address" class="form-label">Address:</label>
-                                        <input type="text" class="form-control" id="address" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="country" class="form-label">Country:</label>
-                                        <select class="form-select" id="country" required>
-                                            <option value="">Select Country</option>
-                                            <!-- Countries populated by JS -->
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="city" class="form-label">City:</label>
-                                        <input type="text" class="form-control" id="city" required> <!-- Kept as text input for now -->
-                                    </div>
-
-                                    <button type="submit" class="btn btn-primary">Save Client</button>
-                                    <button type="button" id="cancel-edit-button" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
-                                </form>
-                                <div id="client-form-message" class="message"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Client List Section -->
-                    <div class="col-md-7">
-                        <div class="card">
-                             <div class="card-header bg-light">
-                                <h5 class="mb-0">Client List</h5>
-                            </div>
-                            <div class="card-body">
-                                <div id="client-list-message" class="message"></div>
-                                <div class="table-responsive">
-                                    <table id="client-table" class="table table-striped table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Company</th>
-                                                <th>Contact</th>
-                                                <th>Email</th>
-                                                <th>Phone</th>
-                                                <th>Address</th>
-                                                <th>City</th>
-                                                <th>Country</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Client rows populated by JS -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Page Content End -->
-            </div>
-
-            <!-- Footer Start -->
-            <footer class="footer mt-auto py-3 bg-light">
-              <div class="container text-center">
-                <span class="text-muted">Pro Makromed Sağlık Ürünleri | Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye | +90 216 344 91 51 | sales@promakromed.com</span>
-              </div>
-            </footer>
-            <!-- Footer End -->
-
-        </div>
-    </div>
-
-    <!-- Link Bootstrap JS (needed for navbar toggler) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Link the client management script -->
-    <script src="clients.js"></script>
-</body>
-</html>
-
+function isValidPhoneNumber(phone) {
+    return phone && phone.replace(/\D/g, '').length >= 7;
+}
