@@ -1,45 +1,53 @@
 const express = require("express");
 const router = express.Router();
+
+// Middleware
+const { protect, admin } = require("../middleware/authMiddleware");
+
+// Controller functions
 const {
-    createOffer,
     getOffers,
     getOfferById,
+    createOffer,
     updateOffer,
     deleteOffer,
-    // addManualOfferLineItem, // Not implemented/exported in controller
-    // updateOfferLineItem,    // Not implemented/exported in controller
-    // removeOfferLineItem,    // Not implemented/exported in controller
     generateOfferPdf,
     generateOfferCsv
-} = require("./../controllers/offerController"); // Adjust path as needed
-const { protect } = require("./../middleware/authMiddleware"); // Assuming auth middleware exists
+} = require("../controllers/offerController");
 
-// Apply auth middleware to all offer routes
-router.use(protect);
+// @desc    Get all offers
+// @route   GET /api/offers
+// @access  Private
+router.route("/").get(protect, getOffers);
 
-// Offer CRUD operations
-router.route("/")
-    .post(createOffer) // Create a new offer (initially empty or with client)
-    .get(getOffers);    // Get a list of offers (with filtering/pagination?)
+// @desc    Create a new offer
+// @route   POST /api/offers
+// @access  Private
+router.route("/").post(protect, createOffer);
 
-router.route("/:id")
-    .get(getOfferById)  // Get a specific offer by ID
-    .put(updateOffer)   // Update offer details (e.g., client, validity, terms, status)
-    .delete(deleteOffer); // Delete an offer (likely only if in Draft status)
+// @desc    Get single offer by ID
+// @route   GET /api/offers/:id
+// @access  Private
+router.route("/:id").get(protect, getOfferById);
 
-// Offer Line Item operations (Commented out as handled within updateOffer)
-/*
-router.route("/:id/items")
-    .post(addManualOfferLineItem); // Add a manual line item
+// @desc    Update an offer
+// @route   PUT /api/offers/:id
+// @access  Private
+router.route("/:id").put(protect, updateOffer);
 
-router.route("/:id/items/:itemId") // Assuming line items get a unique ID within the offer context
-    .put(updateOfferLineItem)    // Update a line item (e.g., quantity, pricing method)
-    .delete(removeOfferLineItem); // Remove a line item from an offer
-*/
+// @desc    Delete an offer (only if Draft)
+// @route   DELETE /api/offers/:id
+// @access  Private
+router.route("/:id").delete(protect, deleteOffer);
 
-// Offer Output Generation
-router.route("/:id/pdf").get(generateOfferPdf);
-router.route("/:id/csv").get(generateOfferCsv);
+// @desc    Generate PDF of offer
+// @route   GET /api/offers/:id/pdf
+// @access  Private
+router.route("/:id/pdf").get(protect, generateOfferPdf);
+
+// @desc    Generate CSV of offer
+// @route   GET /api/offers/:id/csv
+// @access  Private
+router.route("/:id/csv").get(protect, generateOfferCsv);
 
 module.exports = router;
-
