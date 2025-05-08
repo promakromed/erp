@@ -1,7 +1,7 @@
-// /home/ubuntu/erp/public/offers.js (v16 - Fix bulk add display & ensure price calculation)
+// /home/ubuntu/erp/public/offers.js (v17 - DEBUGGING for bulk add display)
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v16): DOMContentLoaded event fired");
+    console.log("DEBUG (v17): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -81,11 +81,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateAndDisplayItemPrice(rowElement) {
         const isManual = rowElement.dataset.isManual === "true";
-        // For now, manual items don't auto-calculate price here. They are purely manual.
-        // If manual items should also use margin on a manually entered base cost, this logic needs an update.
-        if (isManual && !rowElement.querySelector('.item-number').value && !rowElement.querySelector('.item-description').value) {
-             // If it is a truly blank manual row, don't calculate price yet.
-             // This might need refinement if manual rows should have default pricing.
+        if (isManual && !rowElement.querySelector(".item-number").value && !rowElement.querySelector(".item-description").value) {
+            // Blank manual row, do nothing for price yet
         }
 
         const basePriceForMargin = parseFloat(rowElement.dataset.basePriceForMargin) || 0;
@@ -109,6 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (unitPriceDisplay) unitPriceDisplay.textContent = unitPrice.toFixed(2);
         if (lineTotalDisplay) lineTotalDisplay.textContent = lineTotal.toFixed(2);
+        console.log("DEBUG: updateAndDisplayItemPrice - Row: ", rowElement, "BasePrice: ", basePriceForMargin, "Qty: ", quantity, "Margin%: ", effectiveMarginPercent, "UnitPrice: ", unitPrice, "LineTotal: ", lineTotal);
     }
 
     function recalculateAllPrices() {
@@ -116,7 +114,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const rows = lineItemsBody.querySelectorAll("tr");
         rows.forEach(row => {
             const marginInput = row.querySelector(".item-margin-percent");
-            // Recalculate if item uses global margin (item margin is empty)
             if (!marginInput || marginInput.value.trim() === "") {
                  updateAndDisplayItemPrice(row);
             }
@@ -127,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (createOfferBtn) createOfferBtn.addEventListener("click", () => { currentOfferId = null; showOfferForm(); });
         if (offerForm) offerForm.addEventListener("submit", saveOffer);
         if (cancelOfferBtn) cancelOfferBtn.addEventListener("click", showOfferList);
-        if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow(undefined, true)); // true for manual entry
+        if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow(undefined, true));
         if (bulkAddBtn) bulkAddBtn.addEventListener("click", handleBulkAddItems);
         if (generatePdfBtn) generatePdfBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "pdf"); });
         if (generateCsvBtn) generateCsvBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "csv"); });
@@ -217,7 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td><span class="badge bg-${getStatusColor(offer.status)}">${offer.status}</span></td>
                 <td>
                     <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}" title="View/Edit"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? 'disabled title="Only Draft offers can be deleted"' : 'title="Delete"'}><i class="fas fa-trash-alt"></i></button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? "disabled title=\"Only Draft offers can be deleted\"" : "title=\"Delete\""}><i class="fas fa-trash-alt"></i></button>
                     <button class="btn btn-sm btn-secondary pdf-btn" data-id="${offer._id}" title="Generate PDF"><i class="fas fa-file-pdf"></i></button>
                     <button class="btn btn-sm btn-success csv-btn" data-id="${offer._id}" title="Generate CSV"><i class="fas fa-file-csv"></i></button>
                 </td>
@@ -264,8 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 addLineItemRow(item, item.isManual === undefined ? false : item.isManual);
             });
         } else {
-            // Add one or two blank manual rows for new offers if desired
-            // addLineItemRow(undefined, true);
+            // addLineItemRow(undefined, true); // Optionally add a blank manual row
         }
     }
 
@@ -278,7 +274,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function populateClientDropdown(selectedClientRef = null) {
         const token = getAuthToken();
         if (!token || !clientSelect) return;
-        clientSelect.innerHTML = '<option value="">Select Client...</option>'; 
+        clientSelect.innerHTML = "<option value=\"\">Select Client...</option>"; 
         try {
             const response = await fetch("/api/clients", { headers: { "Authorization": `Bearer ${token}` } });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -302,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function populateManufacturerDropdown() {
         const token = getAuthToken();
         if (!token || !bulkAddManufacturerSelect) return;
-        bulkAddManufacturerSelect.innerHTML = '<option value="">Select Manufacturer...</option>';
+        bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
         try {
             const response = await fetch("/api/products/manufacturers", { headers: { "Authorization": `Bearer ${token}` } });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -319,39 +315,51 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function addLineItemRow(itemData, isManualEntry = false) {
+        console.log("DEBUG: addLineItemRow - Called with itemData:", JSON.parse(JSON.stringify(itemData || {})), "isManualEntry:", isManualEntry);
         if (!lineItemsBody) return;
         const row = lineItemsBody.insertRow();
 
-        let productRef = {}; // Holds the actual product properties like itemNo, description, manufacturer
+        let productRef = {}; 
         let basePriceUSD = 0;
         let initialQuantity = 1;
-        let initialMargin = ''; // Empty string means use global margin
+        let initialMargin = 
+            console.log("DEBUG: addLineItemRow - Initial productRef:", JSON.parse(JSON.stringify(productRef)));
 
         if (isManualEntry) {
-            // For manual entry, productRef remains empty, fields are editable by user as per HTML.
-            // Base price for manual items is effectively 0 unless we add a field for manual base cost.
-        } else if (itemData && itemData.data) { // Bulk Add scenario: itemData is { data: productObjectFromBackend }
+            console.log("DEBUG: addLineItemRow - Manual Entry branch");
+        } else if (itemData && itemData.data && typeof itemData.data === 'object') { 
+            console.log("DEBUG: addLineItemRow - Bulk Add branch (itemData.data exists)");
             productRef = itemData.data; 
             basePriceUSD = productRef.basePriceUSDForMarginApplication || 0;
-        } else if (itemData && itemData.productId && typeof itemData.productId === 'object') { // Editing existing offer: itemData is lineItemFromDB, .productId is populated product object
+        } else if (itemData && itemData.productId && typeof itemData.productId === 'object') { 
+            console.log("DEBUG: addLineItemRow - Editing Offer branch (itemData.productId is object)");
             productRef = itemData.productId;
-            // Use pre-calculated base price from line item if available, otherwise from product; ensures consistency
             basePriceUSD = itemData.basePriceUSDForMarginApplication !== undefined ? itemData.basePriceUSDForMarginApplication : (productRef.basePriceUSDForMarginApplication || 0);
             initialQuantity = itemData.quantity || 1;
-            initialMargin = itemData.marginPercent !== undefined && itemData.marginPercent !== null ? itemData.marginPercent.toString() : '';
-        } else if (itemData && typeof itemData === 'object' && !itemData.data && !itemData.productId) { // Fallback: itemData might be the product object directly
+            initialMargin = itemData.marginPercent !== undefined && itemData.marginPercent !== null ? itemData.marginPercent.toString() : 
+        } else if (itemData && typeof itemData === 'object' && !itemData.data && !itemData.productId) { 
+             console.log("DEBUG: addLineItemRow - Fallback branch (itemData is object, no .data or .productId)");
              productRef = itemData;
              basePriceUSD = productRef.basePriceUSDForMarginApplication || 0;
+        } else {
+            console.log("DEBUG: addLineItemRow - No specific data branch matched, itemData:", JSON.parse(JSON.stringify(itemData || {})));
         }
+        console.log("DEBUG: addLineItemRow - Final productRef before use:", JSON.parse(JSON.stringify(productRef)));
+        console.log("DEBUG: addLineItemRow - BasePriceUSD determined:", basePriceUSD);
 
         row.dataset.isManual = isManualEntry.toString();
         row.dataset.basePriceForMargin = basePriceUSD.toString(); 
-        row.dataset.productId = productRef._id || ""; // Store product ID if available
+        row.dataset.productId = productRef._id || ""; 
+
+        const itemNoValue = productRef.itemNo || 
+        const manufacturerValue = productRef.manufacturer || 
+        const descriptionValue = productRef.description || 
+        console.log("DEBUG: addLineItemRow - Values for HTML - itemNo:", itemNoValue, "manufacturer:", manufacturerValue, "description:", descriptionValue);
 
         row.innerHTML = `
-            <td><input type="text" class="form-control item-number" value="${productRef.itemNo || ''}" ${isManualEntry ? '' : 'readonly'}></td>
-            <td><input type="text" class="form-control item-manufacturer" value="${productRef.manufacturer || ''}" ${isManualEntry ? '' : 'readonly'}></td>
-            <td><input type="text" class="form-control item-description" value="${productRef.description || ''}" ${isManualEntry ? '' : 'readonly'}></td>
+            <td><input type="text" class="form-control item-number" value="${itemNoValue}" ${isManualEntry ? "" : "readonly"}></td>
+            <td><input type="text" class="form-control item-manufacturer" value="${manufacturerValue}" ${isManualEntry ? "" : "readonly"}></td>
+            <td><input type="text" class="form-control item-description" value="${descriptionValue}" ${isManualEntry ? "" : "readonly"}></td>
             <td><input type="number" class="form-control item-quantity" value="${initialQuantity}" min="1"></td>
             <td><input type="number" step="0.01" class="form-control item-margin-percent" value="${initialMargin}" placeholder="Global"></td>
             <td><span class="unit-price-display">0.00</span></td>
@@ -359,7 +367,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
         `;
         
-        // Call to update price based on the (potentially non-zero) basePriceUSD and default quantity/margins
         updateAndDisplayItemPrice(row);
     }
 
@@ -392,11 +399,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const description = descriptionInput.value;
             const quantity = parseInt(quantityInput.value);
             const marginPercent = row.querySelector(".item-margin-percent").value;
-            // unitPrice will be recalculated on backend, but good to send what user sees for reference or if backend logic changes
-            // const unitPrice = parseFloat(row.querySelector(".unit-price-display").textContent);
 
             if (!description || !quantity) {
-                if(isManual && !itemNo && !description && !quantity) { /* allow blank manual row if not filled */ return; }
+                if(isManual && !itemNo && !description && !quantity) { return; }
                 showError("Description and quantity are required for all non-blank items.");
                 validItems = false;
                 return; 
@@ -412,16 +417,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 itemNo: itemNo,
                 description: description,
                 quantity: quantity,
-                // unitPrice: unitPrice, // Let backend fully determine this from base + margin
                 marginPercent: marginPercent.trim() === "" ? null : parseFloat(marginPercent),
                 isManual: isManual,
-                // Send the base price used for frontend display; backend can re-verify or use its own calculation
                 basePriceUSDForMarginApplication: parseFloat(row.dataset.basePriceForMargin) || 0 
             });
         });
 
-        if (!validItems) return; // Stop if validation failed
-        if (lineItems.length === 0 && rows.length > 0) { // All rows were blank manual rows
+        if (!validItems) return; 
+        if (lineItems.length === 0 && rows.length > 0) { 
              showError("At least one non-blank line item is required.");
              return;
         }
@@ -520,6 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showBulkAddStatus("Please enter at least one part number.", true);
             return;
         }
+        console.log("DEBUG: handleBulkAddItems - Manufacturer:", manufacturer, "PartNumbers:", partNumbers);
 
         showLoading(true);
         showBulkAddStatus("Looking up products...");
@@ -536,15 +540,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
             const products = await response.json();
+            console.log("DEBUG: handleBulkAddItems - Products received from backend:", JSON.parse(JSON.stringify(products)));
             if (products.length === 0) {
                 showBulkAddStatus("No products found for the given criteria.", true);
             } else {
-                products.forEach(product => addLineItemRow({ data: product }, false)); 
+                products.forEach(product => {
+                    console.log("DEBUG: handleBulkAddItems - Calling addLineItemRow for product:", JSON.parse(JSON.stringify(product)));
+                    addLineItemRow({ data: product }, false);
+                }); 
                 showBulkAddStatus(`Added ${products.length} products.`, false);
             }
         } catch (error) {
             showLoading(false);
             showBulkAddStatus(`Error adding bulk items: ${error.message}`, true);
+            console.error("DEBUG: handleBulkAddItems - Error:", error);
         }
     }
 
