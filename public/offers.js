@@ -1,4 +1,4 @@
-// /home/ubuntu/erp/public/offers.js (v14 - Fix syntax error, ensure bulk add price display)
+// /home/ubuntu/erp/public/offers.js (v15 - Complete file with all functions)
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("DEBUG (v13): DOMContentLoaded event fired");
@@ -332,3 +332,219 @@ document.addEventListener("DOMContentLoaded", () => {
             <td><span class="line-total-display">0.00</span></td>
             <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
         `;
+
+        updateAndDisplayItemPrice(row);
+    }
+
+    async function saveOffer(event) {
+        event.preventDefault();
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+
+        const client = clientSelect.value;
+        if (!client) {
+            showError("Client is required.");
+            return;
+        }
+
+        const lineItems = [];
+        const rows = lineItemsBody.querySelectorAll("tr");
+        if (rows.length === 0) {
+            showError("At least one line item is required.");
+            return;
+        }
+
+        rows.forEach(row => {
+            const isManual = row.dataset.isManual === "true";
+            const productId = isManual ? null : row.dataset.productId;
+            const itemNo = row.querySelector(".item-number").value;
+            const description = row.querySelector(".item-description").value;
+            const quantity = parseInt(row.querySelector(".item-quantity").value);
+            const marginPercent = row.querySelector(".item-margin-percent").value;
+            const unitPrice = parseFloat(row.querySelector(".unit-price-display").textContent);
+
+            if (!description || !quantity) {
+                showError("Description and quantity are required for all items.");
+                throw new Error("Missing item details"); 
+            }
+
+            lineItems.push({
+                productId: productId,
+                itemNo: itemNo,
+                description: description,
+                quantity: quantity,
+                unitPrice: unitPrice, // This will be recalculated on backend, but good to send what user sees
+                marginPercent: marginPercent.trim() === "" ? null : parseFloat(marginPercent),
+                isManual: isManual,
+                basePriceUSDForMarginApplication: parseFloat(row.dataset.basePriceForMargin) || 0 // Send this for consistency
+            });
+        });
+
+        const offerData = {
+            client: client,
+            validityDate: validityInput.value,
+            terms: termsInput.value,
+            status: statusSelect.value,
+            globalMarginPercent: globalMarginInput.value.trim() === "" ? null : parseFloat(globalMarginInput.value),
+            lineItems: lineItems,
+        };
+
+        const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
+        const method = currentOfferId ? "PUT" : "POST";
+
+        showLoading(true);
+        showError("");
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify(offerData),
+            });
+            showLoading(false);
+            if (!response.ok) {
+                let errorData = { message: `Server error: ${response.status}` };
+                try { errorData = await response.json(); } catch (e) { /* ignore */ }
+                throw new Error(errorData.message || `Server error: ${response.status}. Please check data.`);
+            }
+            const savedOffer = await response.json();
+            alert("Offer saved successfully!");
+            showOfferList();
+        } catch (error) {
+            showLoading(false);
+            showError(`Error saving offer: ${error.message}. Please try again.`);
+        }
+    }
+
+    async function loadOfferForEditing(id) {
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+        showLoading(true);
+        showError("");
+        try {
+            const response = await fetch(`/api/offers/${id}`, { headers: { "Authorization": `Bearer ${token}` } });
+            showLoading(false);
+            if (!response.ok) {
+                let errorData = { message: `HTTP error! status: ${response.status}` };
+                try { errorData = await response.json(); } catch (e) { /* ignore */ }
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+            const offer = await response.json();
+            showOfferForm(offer);
+        } catch (error) {
+            showLoading(false);
+            showError(`Error loading offer: ${error.message}. Please try again.`);
+        }
+    }
+
+    async function deleteOffer(id) {
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+        showLoading(true);
+        showError("");
+        try {
+            const response = await fetch(`/api/offers/${id}`, { 
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            showLoading(false);
+            if (!response.ok) {
+                let errorData = { message: `HTTP error! status: ${response.status}` };
+                try { errorData = await response.json(); } catch (e) { /* ignore */ }
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+            alert("Offer deleted successfully!");
+            loadOffers(); 
+        } catch (error) {
+            showLoading(false);
+            showError(`Error deleting offer: ${error.message}. Please try again.`);
+        }
+    }
+
+    async function handleBulkAddItems() {
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+        const manufacturer = bulkAddManufacturerSelect.value;
+        const partNumbers = bulkAddPartNumbersTextarea.value.split(/[\n,]+/).map(pn => pn.trim()).filter(pn => pn);
+
+        if (!manufacturer) {
+            showBulkAddStatus("Please select a manufacturer.", true);
+            return;
+        }
+        if (partNumbers.length === 0) {
+            showBulkAddStatus("Please enter at least one part number.", true);
+            return;
+        }
+
+        showLoading(true);
+        showBulkAddStatus("Looking up products...");
+        try {
+            const response = await fetch("/api/products/bulk-lookup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ manufacturer, partNumbers }),
+            });
+            showLoading(false);
+            if (!response.ok) {
+                let errorData = { message: `Server error: ${response.status}` };
+                try { errorData = await response.json(); } catch (e) { /* ignore */ }
+                throw new Error(errorData.message || `Server error: ${response.status}`);
+            }
+            const products = await response.json();
+            if (products.length === 0) {
+                showBulkAddStatus("No products found for the given criteria.", true);
+            } else {
+                products.forEach(product => addLineItemRow({ data: product }, false)); // Pass product under 'data' key as expected by addLineItemRow
+                showBulkAddStatus(`Added ${products.length} products.`, false);
+            }
+        } catch (error) {
+            showLoading(false);
+            showBulkAddStatus(`Error adding bulk items: ${error.message}`, true);
+        }
+    }
+
+    async function generateOfferOutput(offerId, format) {
+        const token = getAuthToken();
+        if (!token) { showError("Authentication error. Please log in again."); return; }
+        showLoading(true);
+        showError("");
+        try {
+            const response = await fetch(`/api/offers/${offerId}/${format}`, { 
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            showLoading(false);
+            if (!response.ok) {
+                let errorText = `Error generating ${format.toUpperCase()}: ${response.status}`;
+                try {
+                    const errorBlob = await response.blob();
+                    if (errorBlob.type === "text/html" || errorBlob.type === "application/json") {
+                        errorText = await errorBlob.text(); 
+                    }
+                } catch (e) { /* ignore */ }
+                throw new Error(errorText);
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = url;
+            a.download = `offer_${offerId}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (error) {
+            showLoading(false);
+            showError(`Error generating ${format.toUpperCase()}: ${error.message}. Please try again.`);
+        }
+    }
+
+    function initApp() {
+        if (!checkAuth()) return;
+        setupEventListeners();
+        showOfferList();
+    }
+
+    initApp();
+
+});
+
