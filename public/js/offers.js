@@ -78,8 +78,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateAndDisplayItemPrice(rowElement) {
         const isManual = rowElement.dataset.isManual === "true";
-        if (isManual && !rowElement.querySelector(".item-number").value && !rowElement.querySelector(".item-description").value) {
-            return; // Skip blank manual rows
+
+        // Skip blank manual rows
+        if (isManual &&
+            !rowElement.querySelector(".item-number").value.trim() &&
+            !rowElement.querySelector(".item-description").value.trim()) {
+            return;
         }
 
         const basePriceForMargin = parseFloat(rowElement.dataset.basePriceForMargin) || 0;
@@ -87,9 +91,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const marginInput = rowElement.querySelector(".item-margin-percent");
         const unitPriceDisplay = rowElement.querySelector(".unit-price-display");
         const lineTotalDisplay = rowElement.querySelector(".line-total-display");
+
         const quantity = parseInt(quantityInput.value) || 0;
         let itemMarginPercent = marginInput?.value.trim() !== "" ? parseFloat(marginInput.value) : null;
         let effectiveMarginPercent = itemMarginPercent ?? parseFloat(globalMarginInput.value) ?? 0;
+
+        if (isNaN(effectiveMarginPercent)) effectiveMarginPercent = 0;
 
         const unitPrice = basePriceForMargin * (1 + effectiveMarginPercent / 100);
         const lineTotal = unitPrice * quantity;
@@ -101,8 +108,8 @@ document.addEventListener("DOMContentLoaded", () => {
             "BasePrice:", basePriceForMargin,
             "Qty:", quantity,
             "Margin%:", effectiveMarginPercent,
-            "UnitPrice:", unitPrice,
-            "LineTotal:", lineTotal);
+            "UnitPrice:", unitPrice.toFixed(2),
+            "LineTotal:", lineTotal.toFixed(2));
     }
 
     function recalculateAllPrices() {
@@ -117,14 +124,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function setupEventListeners() {
-        if (createOfferBtn) createOfferBtn.addEventListener("click", () => { currentOfferId = null; showOfferForm(); });
+        if (createOfferBtn) createOfferBtn.addEventListener("click", () => {
+            currentOfferId = null;
+            showOfferForm();
+        });
+
         if (offerForm) offerForm.addEventListener("submit", saveOffer);
         if (cancelOfferBtn) cancelOfferBtn.addEventListener("click", showOfferList);
         if (addItemBtn) addItemBtn.addEventListener("click", () => addLineItemRow(undefined, true));
+
         if (bulkAddBtn) bulkAddBtn.addEventListener("click", handleBulkAddItems);
-        if (generatePdfBtn) generatePdfBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "pdf"); });
-        if (generateCsvBtn) generateCsvBtn.addEventListener("click", () => { if (currentOfferId) generateOfferOutput(currentOfferId, "csv"); });
-        if (logoutButton) logoutButton.addEventListener("click", () => { localStorage.removeItem("userInfo"); window.location.href = "/login.html"; });
+
+        if (generatePdfBtn) generatePdfBtn.addEventListener("click", () => {
+            if (currentOfferId) generateOfferOutput(currentOfferId, "pdf");
+        });
+
+        if (generateCsvBtn) generateCsvBtn.addEventListener("click", () => {
+            if (currentOfferId) generateOfferOutput(currentOfferId, "csv");
+        });
+
+        if (logoutButton) logoutButton.addEventListener("click", () => {
+            localStorage.removeItem("userInfo");
+            window.location.href = "/login.html";
+        });
 
         if (lineItemsBody) {
             lineItemsBody.addEventListener("click", (e) => {
@@ -164,25 +186,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function loadOffers() {
         const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
+        if (!token) {
+            showError("Authentication error. Please log in again.");
+            return;
+        }
+
         if (!offerListContainer) return;
         offerListContainer.innerHTML = "";
         showError("");
+
         showLoading(true);
 
         try {
             const response = await fetch("/api/offers", {
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
+                headers: { "Authorization": `Bearer ${token}` }
             });
 
             showLoading(false);
 
             if (!response.ok) {
                 let errorData = { message: `HTTP error! status: ${response.status}` };
-                try { errorData = await response.json(); } catch {}
+                try {
+                    errorData = await response.json();
+                } catch {}
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
 
@@ -207,7 +233,12 @@ document.addEventListener("DOMContentLoaded", () => {
         table.innerHTML = `
             <thead>
                 <tr>
-                    <th>Offer ID</th><th>Client Company</th><th>Date (DD/MM/YYYY)</th><th>Validity (DD/MM/YYYY)</th><th>Status</th><th>Actions</th>
+                    <th>Offer ID</th>
+                    <th>Client Company</th>
+                    <th>Date (DD/MM/YYYY)</th>
+                    <th>Validity (DD/MM/YYYY)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -225,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td><span class="badge bg-${getStatusColor(offer.status)}">${offer.status}</span></td>
                 <td>
                     <button class="btn btn-sm btn-info view-edit-btn" data-id="${offer._id}"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? 'disabled title="Only Draft offers can be deleted"' : ''}><i class="fas fa-trash-alt"></i></button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${offer._id}" ${offer.status !== "Draft" ? 'disabled title="Only Draft offers can be deleted"' : 'title="Delete"'}><i class="fas fa-trash-alt"></i></button>
                     <button class="btn btn-sm btn-secondary pdf-btn" data-id="${offer._id}" title="Generate PDF"><i class="fas fa-file-pdf"></i></button>
                     <button class="btn btn-sm btn-success csv-btn" data-id="${offer._id}" title="Generate CSV"><i class="fas fa-file-csv"></i></button>
                 </td>
@@ -257,13 +288,13 @@ document.addEventListener("DOMContentLoaded", () => {
         currentOfferId = offerData ? offerData._id : null;
 
         if (offerIdDisplay)
-            offerIdDisplay.textContent = currentOfferId ? `Editing Offer ID: ${offerData.offerId || "N/A"}` : "Creating New Offer";
+            offerIdDisplay.textContent = currentOfferId ?
+                `Editing Offer ID: ${offerData.offerId || "N/A"}` : "Creating New Offer";
 
         if (validityInput && offerData) validityInput.value = offerData.validityDate ? offerData.validityDate.split("T")[0] : "";
         if (termsInput && offerData) termsInput.value = offerData.terms || "";
         if (statusSelect && offerData) statusSelect.value = offerData.status || "Draft";
-        if (globalMarginInput && offerData) globalMarginInput.value = offerData.globalMarginPercent !== undefined ? offerData.globalMarginPercent : "";
-        if (globalMarginInput && !offerData) globalMarginInput.value = "";
+        if (globalMarginInput && offerData) globalMarginInput.value = offerData.globalMarginPercent !== undefined ? offerData.globalMarginPercent.toString() : "";
 
         if (generatePdfBtn) generatePdfBtn.style.display = currentOfferId ? "inline-block" : "none";
         if (generateCsvBtn) generateCsvBtn.style.display = currentOfferId ? "inline-block" : "none";
@@ -331,8 +362,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const manufacturers = await response.json();
-
-            manufacturers.forEach(manufacturer => {
+            manufacturers.sort().forEach(manufacturer => {
                 const option = document.createElement("option");
                 option.value = manufacturer;
                 option.textContent = manufacturer;
@@ -344,6 +374,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function addLineItemRow(itemData, isManualEntry = false) {
+        console.log("DEBUG: addLineItemRow - Called with itemData:", JSON.stringify(itemData), "isManualEntry:", isManualEntry);
+
         if (!lineItemsBody) return;
         const row = lineItemsBody.insertRow();
 
@@ -353,24 +385,29 @@ document.addEventListener("DOMContentLoaded", () => {
         let initialMargin = "";
 
         if (isManualEntry) {
-            // Manual entry – no product data
+            console.log("DEBUG: Manual Entry branch");
         } else if (itemData && typeof itemData === "object") {
             if (itemData.productId && typeof itemData.productId === "object") {
+                console.log("DEBUG: Editing Offer branch");
                 productRef = itemData.productId;
                 basePriceUSD = itemData.basePriceUSDForMarginApplication || productRef.basePriceUSDForMarginApplication || 0;
                 initialQuantity = itemData.quantity || 1;
                 initialMargin = itemData.marginPercent !== undefined && itemData.marginPercent !== null ? itemData.marginPercent.toString() : "";
             } else if (itemData.data && typeof itemData.data === "object") {
+                console.log("DEBUG: Bulk Add branch");
                 productRef = itemData.data;
                 basePriceUSD = productRef.basePriceUSDForMarginApplication || 0;
             } else {
+                console.log("DEBUG: Fallback branch");
                 productRef = itemData;
                 basePriceUSD = productRef.basePriceUSDForMarginApplication || 0;
             }
         }
 
+        console.log("DEBUG: Final productRef before use:", JSON.stringify(productRef));
+
         row.dataset.isManual = isManualEntry.toString();
-        row.dataset.basePriceForMargin = basePriceUSD.toString();
+        row.dataset.basePriceForMargin = basePriceUSD.toFixed(2);
         row.dataset.productId = productRef._id || "";
 
         const itemNoValue = productRef.itemNo || "";
@@ -381,8 +418,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <td><input type="text" class="form-control item-number" value="${itemNoValue}" ${isManualEntry ? "" : "readonly"}></td>
             <td><input type="text" class="form-control item-manufacturer" value="${manufacturerValue}" ${isManualEntry ? "" : "readonly"}></td>
             <td><input type="text" class="form-control item-description" value="${descriptionValue}" ${isManualEntry ? "" : "readonly"}></td>
-            <td><input type="number" class="form-control item-quantity" value="1" min="1"></td>
-            <td><input type="number" step="0.01" class="form-control item-margin-percent" value="" placeholder="Global"></td>
+            <td><input type="number" class="form-control item-quantity" value="${initialQuantity}" min="1"></td>
+            <td><input type="number" step="0.01" class="form-control item-margin-percent" value="${initialMargin}" placeholder="Global"></td>
             <td><span class="unit-price-display">0.00</span></td>
             <td><span class="line-total-display">0.00</span></td>
             <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
@@ -394,7 +431,10 @@ document.addEventListener("DOMContentLoaded", () => {
     async function saveOffer(event) {
         event.preventDefault();
         const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
+        if (!token) {
+            showError("Authentication error. Please log in again.");
+            return;
+        }
 
         const client = clientSelect.value;
         if (!client) {
@@ -409,9 +449,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const row = rows[i];
             const isManual = row.dataset.isManual === "true";
             const productId = isManual ? null : row.dataset.productId;
-            const itemNo = row.querySelector(".item-number").value.trim();
-            const description = row.querySelector(".item-description").value.trim();
-            const quantity = parseInt(row.querySelector(".item-quantity").value);
+            const itemNo = row.querySelector(".item-number")?.value.trim() || "";
+            const description = row.querySelector(".item-description")?.value.trim() || "";
+            const quantity = parseInt(row.querySelector(".item-quantity")?.value) || 0;
 
             if (isManual && !itemNo && !description && quantity <= 0) continue;
 
@@ -421,12 +461,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             lineItems.push({
-                productId,
-                itemNo,
-                description,
-                quantity,
-                marginPercent: row.querySelector(".item-margin-percent").value.trim(),
-                isManual,
+                productId: productId,
+                itemNo: itemNo,
+                description: description,
+                quantity: quantity,
+                marginPercent: row.querySelector(".item-margin-percent")?.value.trim() || "",
+                isManual: isManual,
                 basePriceUSDForMarginApplication: parseFloat(row.dataset.basePriceForMargin) || 0
             });
         }
@@ -437,12 +477,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const offerData = {
-            client,
+            client: client,
             validityDate: validityInput.value,
             terms: termsInput.value,
             status: statusSelect.value,
             globalMarginPercent: globalMarginInput.value.trim() ? parseFloat(globalMarginInput.value) : null,
-            lineItems
+            lineItems: lineItems
         };
 
         const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
@@ -453,7 +493,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             const response = await fetch(url, {
-                method,
+                method: method,
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
@@ -464,7 +504,10 @@ document.addEventListener("DOMContentLoaded", () => {
             showLoading(false);
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+                let errorData = { message: `Server error: ${response.status}` };
+                try {
+                    errorData = await response.json();
+                } catch {}
                 throw new Error(errorData.message || `Server error: ${response.status}`);
             }
 
@@ -479,7 +522,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function handleBulkAddItems() {
         const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
+        if (!token) {
+            showError("Authentication error. Please log in again.");
+            return;
+        }
 
         const manufacturer = bulkAddManufacturerSelect.value;
         const partNumbers = bulkAddPartNumbersTextarea.value
@@ -517,10 +563,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const results = await response.json();
-
-            const validProducts = results
-                .filter(p => p.found)
-                .map(p => p.data);
+            const validProducts = results.filter(p => p.found).map(p => p.data);
 
             if (validProducts.length === 0) {
                 showBulkAddStatus("No matching products found.", true);
@@ -528,6 +571,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             validProducts.forEach(product => {
+                console.log("DEBUG: Calling addLineItemRow with product:", JSON.stringify(product));
                 addLineItemRow(product, false);
             });
 
@@ -535,20 +579,22 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showBulkAddStatus(`Error adding items: ${error.message}`, true);
+            console.error("DEBUG: handleBulkAddItems - Error:", error);
         }
     }
 
     async function loadOfferForEditing(id) {
         const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
+        if (!token) {
+            showError("Authentication error. Please log in again.");
+            return;
+        }
+
         showLoading(true);
         showError("");
 
         try {
-            const response = await fetch(`/api/offers/${id}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-
+            const response = await fetch(`/api/offers/${id}`);
             showLoading(false);
 
             if (!response.ok) throw new Error(`Offer not found. Status: ${response.status}`);
@@ -563,7 +609,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function deleteOffer(id) {
         const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
+        if (!token) {
+            showError("Authentication error. Please log in again.");
+            return;
+        }
 
         if (!confirm("Are you sure you want to delete this offer?")) return;
 
@@ -590,7 +639,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function generateOfferOutput(offerId, format) {
         const token = getAuthToken();
-        if (!token) { showError("Authentication error. Please log in again."); return; }
+        if (!token) {
+            showError("Authentication error. Please log in again.");
+            return;
+        }
 
         showLoading(true);
         showError("");
@@ -609,6 +661,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const a = document.createElement("a");
             a.href = url;
             a.download = `offer_${offerId}.${format}`;
+            a.style.display = "none";
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -622,7 +675,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function initApp() {
         if (!checkAuth()) return;
         setupEventListeners();
-        showOfferList();
+        loadOffers();
     }
 
     initApp();
