@@ -13,7 +13,6 @@
     <!-- Shared Styles -->
     <link rel="stylesheet" href="styles.css">
 
-    <!-- Page-specific styles -->
     <style>
         body {
             background-color: #f0f4f8;
@@ -22,21 +21,18 @@
 
         .login-container {
             max-width: 400px;
-            margin: 100px auto;
+            margin-top: 100px;
+            margin-left: auto;
+            margin-right: auto;
             padding: 20px;
             background: white;
             border-radius: 10px;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
         }
 
         .header-logo {
             height: 40px;
             margin-right: 10px;
-        }
-
-        .form-control:focus {
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
         }
     </style>
 </head>
@@ -62,7 +58,7 @@
             </div>
 
             <div class="d-grid">
-                <button type="submit" class="btn btn-primary" id="login-button">
+                <button type="submit" class="btn btn-primary">
                     <i class="fas fa-sign-in-alt me-2"></i>Login
                 </button>
             </div>
@@ -83,56 +79,95 @@
 
     <!-- Script specific to login page -->
     <script>
-        // Only run checkAuth if needed
+        const API_URL = 'https://proerp-b0dfb327892c.herokuapp.com/api ';
+
         document.addEventListener("DOMContentLoaded", () => {
+            // Skip auth check if we're already on login.html
             const currentPath = window.location.pathname;
 
-            // Prevent infinite loop by skipping auth check on login.html
-            if (!currentPath.includes("login.html")) {
-                if (!checkAuth()) return;
+            if (currentPath.includes("login.html")) {
+                setupLoginForm();
+                return;
+            } else {
+                checkAuth();
             }
+        });
 
+        function setupLoginForm() {
             const loginForm = document.getElementById("login-form");
             const loginError = document.getElementById("login-error");
 
-            if (loginForm) {
-                loginForm.addEventListener("submit", async (e) => {
-                    e.preventDefault();
-                    const email = document.getElementById("email").value.trim();
-                    const password = document.getElementById("password").value;
+            if (!loginForm) return;
 
-                    if (!email || !password) {
-                        loginError.textContent = "Please enter both email and password.";
-                        loginError.style.display = "block";
-                        return;
+            loginForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const email = document.getElementById("email").value.trim();
+                const password = document.getElementById("password").value;
+
+                if (!email || !password) {
+                    loginError.textContent = "Please enter both email and password.";
+                    loginError.style.display = "block";
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/users/login`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || "Invalid credentials");
                     }
 
-                    try {
-                        const response = await fetch(`${API_URL}/users/login`, {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({ email, password })
-                        });
+                    localStorage.setItem("userInfo", JSON.stringify(data));
+                    window.location.href = "/offers.html";
 
-                        const data = await response.json();
+                } catch (error) {
+                    console.error("Login error:", error.message);
+                    loginError.textContent = error.message;
+                    loginError.style.display = "block";
+                }
+            });
+        }
 
-                        if (!response.ok) {
-                            throw new Error(data.message || "Invalid credentials");
-                        }
+        // Auth check logic
+        function getAuthToken() {
+            const userInfoString = localStorage.getItem("userInfo");
+            if (!userInfoString) return null;
 
-                        localStorage.setItem("userInfo", JSON.stringify(data));
-                        window.location.href = "/offers.html";
-
-                    } catch (error) {
-                        console.error("Login error:", error.message);
-                        loginError.textContent = error.message;
-                        loginError.style.display = "block";
-                    }
-                });
+            try {
+                const userInfo = JSON.parse(userInfoString);
+                return userInfo.token || null;
+            } catch (e) {
+                console.error("Failed to parse userInfo:", e);
+                return null;
             }
-        });
+        }
+
+        function checkAuth() {
+            const token = getAuthToken();
+
+            if (!token && !window.location.pathname.includes("login.html")) {
+                console.warn("Redirecting to login...");
+                window.location.href = "/login.html";
+                return false;
+            }
+
+            const userNameElement = document.getElementById("user-name");
+            if (userNameElement && token) {
+                try {
+                    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+                    userNameElement.textContent = userInfo.name || "User";
+                } catch (e) {}
+            }
+
+            return !!token;
+        }
     </script>
 </body>
 </html>
