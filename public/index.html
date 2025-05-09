@@ -1,162 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PRO MAKROMED ERP - Search</title> <!-- Updated Title -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Add style for header logo */
-    .header-logo {
-      height: 40px; /* Adjust height as needed */
-      margin-right: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>ERP Dashboard - PRO MAKROMED</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap @5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css ">
+
+    <!-- Shared Styles -->
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .header-logo {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .card-header h5 {
+            margin: 0;
+        }
+
+        .dashboard-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .dashboard-card:hover {
+            transform: scale(1.02);
+        }
+    </style>
 </head>
 <body>
-  <div id="app">
-    <!-- Login Form -->
-    <div id="login-container" class="container mt-5">
-      <div class="row justify-content-center">
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header bg-primary text-white">
-              <h4 class="mb-0">PRO MAKROMED ERP - Login</h4> <!-- Updated Login Header -->
+    <div id="app">
+        <!-- Header -->
+        <header class="bg-primary text-white pt-3 pb-2">
+            <div class="container-fluid d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <img src="/images/logo.jpg" alt="PRO MAKROMED Logo" class="header-logo">
+                    <h1 class="h3 mb-0">PRO MAKROMED ERP</h1>
+                </div>
+                <div>
+                    <span class="navbar-text me-3" id="user-name"></span>
+                    <button class="btn btn-outline-light btn-sm" id="logout-button">Logout</button>
+                </div>
             </div>
-            <div class="card-body">
-              <form id="login-form">
-                <div class="mb-3">
-                  <label for="email" class="form-label">Email</label>
-                  <input type="email" class="form-control" id="email" required>
+
+            <!-- Navbar -->
+            <nav class="navbar navbar-expand-lg navbar-dark bg-primary mt-1">
+                <div class="container-fluid">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#">Dashboard</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="clients.html">Clients</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="offers.html">Offers</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-                <div class="mb-3">
-                  <label for="password" class="form-label">Password</label>
-                  <input type="password" class="form-control" id="password" required>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <div class="container mt-4">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card dashboard-card shadow-sm" onclick="window.location.href='offers.html'">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-invoice-dollar fa-2x text-primary mb-2"></i>
+                            <h5 class="card-title">Create Offer</h5>
+                            <p class="text-muted">Add products, set margins, export PDF/CSV</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="d-grid">
-                  <button type="submit" class="btn btn-primary">Login</button>
+                <div class="col-md-4">
+                    <div class="card dashboard-card shadow-sm" onclick="window.location.href='clients.html'">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-2x text-success mb-2"></i>
+                            <h5 class="card-title">Manage Clients</h5>
+                            <p class="text-muted">View, add, or edit clients</p>
+                        </div>
+                    </div>
                 </div>
-              </form>
-              <div class="alert alert-danger mt-3" id="login-error" style="display: none;"></div>
+                <div class="col-md-4">
+                    <div class="card dashboard-card shadow-sm" onclick="window.location.href='search.html'">
+                        <div class="card-body text-center">
+                            <i class="fas fa-search fa-2x text-info mb-2"></i>
+                            <h5 class="card-title">Search Products</h5>
+                            <p class="text-muted">Find items by manufacturer or number</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
+
+        <!-- Footer -->
+        <footer class="footer mt-auto py-3 bg-light text-center">
+            <div class="container">
+                <span class="text-muted">Pro Makromed Sağlık Ürünleri | Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye | +90 216 344 91 51 | sales@promakromed.com</span>
+            </div>
+        </footer>
+
+        <!-- JavaScript -->
+        <script src="js/app.js"></script>
     </div>
 
-    <!-- Main App Container (hidden until login) -->
-    <div id="main-container" style="display: none;">
-
-      <!-- Updated Header with Logo Start -->
-      <header class="bg-primary text-white pt-3 pb-2">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <img src="/images/logo.jpg" alt="PRO MAKROMED Logo" class="header-logo">
-            <h1 class="h3 mb-0">PRO MAKROMED ERP</h1>
-          </div>
-          <div>
-            <span class="navbar-text me-3" id="user-name"></span>
-            <button class="btn btn-outline-light btn-sm" id="logout-btn">Logout</button>
-          </div>
-        </div>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mt-1">
-          <div class="container-fluid">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-              <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-              <ul class="navbar-nav">
-                <li class="nav-item">
-                  <a class="nav-link" href="index.html">Search</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="clients.html">Clients</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="offers.html">Offers</a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </nav>
-      </header>
-      <!-- Updated Header with Logo End -->
-
-      <div class="container mt-4">
-        <!-- Page Content Start -->
-        <div class="row">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-header bg-light">
-                <h5 class="mb-0">Product Search</h5>
-              </div>
-              <div class="card-body">
-                <form id="search-form">
-                  <div class="mb-3">
-                    <label for="manufacturer-select" class="form-label">Select Manufacturer</label>
-                    <select class="form-select" id="manufacturer-select" required>
-                      <option value="" disabled selected>-- Select Manufacturer --</option>
-                      <!-- Options will be populated dynamically -->
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label for="item-numbers" class="form-label">Enter Item Number(s)</label>
-                    <textarea class="form-control" id="item-numbers" rows="3" placeholder="Enter one or multiple item numbers (one per line or comma-separated)"></textarea>
-                    <div class="form-text">Example: 00.1001, 00.1003, 00.1004, 00.1050</div>
-                  </div>
-                  <button type="submit" class="btn btn-primary">Search</button>
-                  <button type="button" class="btn btn-secondary" id="clear-btn">Clear</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="row mt-4">
-          <div class="col-12">
-            <div id="results-container" style="display: none;">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 id="result-count"></h5>
-                <button class="btn btn-success btn-sm" id="export-csv-btn" style="display: none;">Export to CSV</button>
-              </div>
-              <div class="table-responsive">
-                <table class="table table-striped table-hover">
-                  <thead class="table-primary" id="results-head">
-                    <!-- Headers will be dynamically generated here -->
-                  </thead>
-                  <tbody id="results-body"></tbody>
-                </table>
-              </div>
-            </div>
-            <div id="no-results" class="alert alert-info text-center" style="display: none;">
-              No products found matching your search criteria.
-            </div>
-            <div id="loading" class="text-center" style="display: none;">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <p class="mt-2">Searching products...</p>
-            </div>
-            <div id="error-message" class="alert alert-danger" style="display: none;"></div>
-          </div>
-        </div>
-        <!-- Page Content End -->
-      </div>
-
-      <!-- Footer Start -->
-      <footer class="footer mt-auto py-3 bg-light">
-        <div class="container text-center">
-          <span class="text-muted">Pro Makromed Sağlık Ürünleri | Esenşehir, Güneyli Sk. No:15/1, 34776 Ümraniye/İstanbul, Türkiye | +90 216 344 91 51 | sales@promakromed.com</span>
-        </div>
-      </footer>
-      <!-- Footer End -->
-
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            checkAuth();
+        });
+    </script>
 </body>
 </html>
-
