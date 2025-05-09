@@ -78,96 +78,99 @@
     <script src="js/app.js"></script>
 
     <!-- Script specific to login page -->
-    <script>
-        const API_URL = 'https://proerp-b0dfb327892c.herokuapp.com/api ';
+ <script>
+    const API_URL = 'https://proerp-b0dfb327892c.herokuapp.com/api ';
 
-        document.addEventListener("DOMContentLoaded", () => {
-            // Skip auth check if we're already on login.html
-            const currentPath = window.location.pathname;
+    document.addEventListener("DOMContentLoaded", () => {
+        const currentPath = window.location.pathname;
 
-            if (currentPath.includes("login.html")) {
-                setupLoginForm();
-                return;
-            } else {
-                checkAuth();
-            }
-        });
-
-        function setupLoginForm() {
-            const loginForm = document.getElementById("login-form");
-            const loginError = document.getElementById("login-error");
-
-            if (!loginForm) return;
-
-            loginForm.addEventListener("submit", async (e) => {
-                e.preventDefault();
-
-                const email = document.getElementById("email").value.trim();
-                const password = document.getElementById("password").value;
-
-                if (!email || !password) {
-                    loginError.textContent = "Please enter both email and password.";
-                    loginError.style.display = "block";
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${API_URL}/users/login`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ email, password })
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(data.message || "Invalid credentials");
-                    }
-
-                    localStorage.setItem("userInfo", JSON.stringify(data));
-                    window.location.href = "/offers.html";
-
-                } catch (error) {
-                    console.error("Login error:", error.message);
-                    loginError.textContent = error.message;
-                    loginError.style.display = "block";
-                }
-            });
+        // Only set up login form if on login page
+        if (currentPath.includes("login.html")) {
+            setupLoginForm();
+            return;
         }
 
-        // Auth check logic
-        function getAuthToken() {
-            const userInfoString = localStorage.getItem("userInfo");
-            if (!userInfoString) return null;
+        // Otherwise, check auth and redirect if needed
+        if (!checkAuth()) {
+            return;  // Stop further JS from running if not authenticated
+        }
+    });
+
+    function setupLoginForm() {
+        const loginForm = document.getElementById("login-form");
+        const loginError = document.getElementById("login-error");
+
+        if (!loginForm) return;
+
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (!email || !password) {
+                loginError.textContent = "Please enter both email and password.";
+                loginError.style.display = "block";
+                return;
+            }
 
             try {
-                const userInfo = JSON.parse(userInfoString);
-                return userInfo.token || null;
-            } catch (e) {
-                console.error("Failed to parse userInfo:", e);
-                return null;
+                const response = await fetch(`${API_URL}/users/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Invalid credentials");
+                }
+
+                localStorage.setItem("userInfo", JSON.stringify(data));
+                window.location.href = "/offers.html"; // Redirect after successful login
+
+            } catch (error) {
+                console.error("Login error:", error.message);
+                loginError.textContent = error.message;
+                loginError.style.display = "block";
             }
+        });
+    }
+
+    function getAuthToken() {
+        const userInfoString = localStorage.getItem("userInfo");
+        if (!userInfoString) return null;
+
+        try {
+            const userInfo = JSON.parse(userInfoString);
+            return userInfo.token || null;
+        } catch (e) {
+            console.error("Failed to parse userInfo:", e);
+            return null;
+        }
+    }
+
+    function checkAuth() {
+        const token = getAuthToken();
+
+        if (!token && !window.location.pathname.includes("login.html")) {
+            console.warn("No token found. Redirecting to /login.html");
+            window.location.href = "/login.html";
+            return false;
         }
 
-        function checkAuth() {
-            const token = getAuthToken();
-
-            if (!token && !window.location.pathname.includes("login.html")) {
-                console.warn("Redirecting to login...");
-                window.location.href = "/login.html";
-                return false;
-            }
-
-            const userNameElement = document.getElementById("user-name");
-            if (userNameElement && token) {
-                try {
-                    const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-                    userNameElement.textContent = userInfo.name || "User";
-                } catch (e) {}
-            }
-
-            return !!token;
+        // Set user name if element exists
+        const userNameElement = document.getElementById("user-name");
+        if (userNameElement && token) {
+            try {
+                const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+                userNameElement.textContent = userInfo.name || "User";
+            } catch (e) {}
         }
-    </script>
+
+        return !!token;
+    }
+</script>
 </body>
 </html>
