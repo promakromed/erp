@@ -234,6 +234,12 @@
     <!-- Client Logic -->
     <script src="js/countryData.js"></script>
     <script src="js/clients.js"></script>
+    <script src="js/app.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        checkAuth();  // Ensure only logged-in users can access protected pages
+    });
+</script>
     
 </body>
 </html>
