@@ -1,100 +1,57 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/productModel");
-const { getExchangeRate } = require("../utils/exchangeUtils");
 
-// @desc    Get products by manufacturer and part numbers
-// @route   POST /api/products/bulk-lookup
+// @desc    Fetch all products
+// @route   GET /api/products
 // @access  Private
-const getProductsByManufacturerAndPartNumbers = asyncHandler(async (req, res) => {
-    const { manufacturer, partNumbers } = req.body;
+const getProducts = asyncHandler(async (req, res) => {
+    const products = await Product.find({}).sort({ createdAt: -1 });
+    res.json(products);
+});
 
-    console.log("DEBUG: getProductsByManufacturerAndPartNumbers called with:", {
-        manufacturer,
-        partNumbers
-    });
-
-    if (!manufacturer || !Array.isArray(partNumbers) || partNumbers.length === 0) {
-        return res.status(400).json({
-            message: "Manufacturer and a non-empty array of partNumbers are required."
-        });
-    }
-
-    try {
-        const foundProducts = await Product.find({
-            manufacturer: manufacturer,
-            itemNo: { $in: partNumbers }
-        }).lean();
-
-        const results = await Promise.all(
-            partNumbers.map(async (pn) => {
-                const product = foundProducts.find(p => p.itemNo === pn);
-
-                if (product) {
-                    let basePriceUSDForMarginApplication = 0;
-
-                    // Priority 1: Use product's own base price
-                    if (product.basePrice && product.basePrice > 0) {
-                        const rate = await getExchangeRate(product.baseCurrency || "USD", "USD");
-                        basePriceUSDForMarginApplication = product.basePrice * rate;
-                        console.log(
-                            `DEBUG (bulkLookup ${pn}): Applied 3% protection to Product's own basePrice. USD for margin: ${basePriceUSDForMarginApplication.toFixed(2)}`
-                        );
-                    }
-
-                    // Priority 2: Use lowest supplier offer
-                    else if (product.supplierOffers && product.supplierOffers.length > 0) {
-                        let lowestSupplierPriceUSDWithProtection = Infinity;
-                        let tempSourceBasePrice = 0;
-                        let tempSourceCurrency = "USD";
-
-                        for (const supOffer of product.supplierOffers) {
-                            if (supOffer.originalPrice && supOffer.originalCurrency) {
-                                const supplierRate = await getExchangeRate(supOffer.originalCurrency, "USD");
-                                let supplierPriceInUSD = supOffer.originalPrice * supplierRate;
-                                if (supOffer.originalCurrency !== "USD") {
-                                    supplierPriceInUSD *= 1.03; // Apply 3% protection
-                                }
-                                if (supplierPriceInUSD < lowestSupplierPriceUSDWithProtection) {
-                                    lowestSupplierPriceUSDWithProtection = supplierPriceInUSD;
-                                    tempSourceBasePrice = supOffer.originalPrice;
-                                    tempSourceCurrency = supOffer.originalCurrency;
-                                }
-                            }
-                        }
-
-                        if (lowestSupplierPriceUSDWithProtection !== Infinity) {
-                            basePriceUSDForMarginApplication = lowestSupplierPriceUSDWithProtection;
-                            console.log(
-                                `DEBUG (bulkLookup ${pn}): Using lowest supplier offer. USD for margin (with protection): ${basePriceUSDForMarginApplication.toFixed(2)}`
-                            );
-                        }
-                    }
-
-                    product.basePriceUSDForMarginApplication = parseFloat(basePriceUSDForMarginApplication.toFixed(2));
-
-                    return {
-                        itemNumber: pn,
-                        found: true,
-                        data: product
-                    };
-                } else {
-                    return {
-                        itemNumber: pn,
-                        found: false,
-                        data: null
-                    };
-                }
-            })
-        );
-
-        console.log("DEBUG: Bulk lookup results:", JSON.stringify(results, null, 2));
-        res.json(results);
-    } catch (error) {
-        console.error("Error in bulk product lookup:", error);
-        res.status(500).json({ message: "Server error during bulk product lookup." });
+// @desc    Fetch product by ID
+// @route   GET /api/products/:id
+// @access  Private
+const getProductById = asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id);
+    if (product) {
+        res.json(product);
+    } else {
+        res.status(404).json({ message: "Product not found" });
     }
 });
 
+// @desc    Get distinct manufacturers list
+// @route   GET /api/products/manufacturers
+// @access  Private
+const getManufacturers = asyncHandler(async (req, res) => {
+    const manufacturers = await Product.distinct("manufacturer");
+    res.json(manufacturers.filter(Boolean).sort());
+});
+
+// @desc    Search products by description/manufacturer
+// @route   GET /api/products/search
+// @access  Private
+const searchProducts = asyncHandler(async (req, res) => {
+    const { query } = req.query;
+    if (!query || typeof query !== "string") {
+        return res.status(400).json({ message: "Search query is required." });
+    }
+
+    const products = await Product.find({
+        $or: [
+            { description: { $regex: query, $options: "i" } },
+            { manufacturer: { $regex: query, $options: "i" } },
+            { brand: { $regex: query, $options: "i" } }
+        ]
+    });
+
+    res.json(products);
+});
+
 module.exports = {
-    getProductsByManufacturerAndPartNumbers
+    getProducts,
+    getProductById,
+    getManufacturers,
+    searchProducts
 };
