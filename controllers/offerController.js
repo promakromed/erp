@@ -1,18 +1,15 @@
 const asyncHandler = require("express-async-handler");
 const Offer = require("../models/offerModel");
-const Client = require("../models/clientModel");
-const Product = require("../models/productModel");
+const Client = require("../models/Client");
 const CustomerPriceList = require("../models/customerPriceListModel");
-const mongoose = require("mongoose");
+const Product = require("../models/productModel");
 
-const { getExchangeRate } = require("../utils/exchangeUtils");
-
-// @desc    Create or update an offer
+// @desc    Create new offer
 // @route   POST /api/offers
 // @access  Private/Admin
 const createOffer = asyncHandler(async (req, res) => {
     const {
-        clientId,
+        client,
         validityDate,
         terms,
         status,
@@ -20,15 +17,13 @@ const createOffer = asyncHandler(async (req, res) => {
         lineItems
     } = req.body;
 
-    if (!clientId || !lineItems || !Array.isArray(lineItems)) {
-        res.status(400).json({ message: "Client and line items are required." });
-        return;
+    if (!client || !lineItems || !Array.isArray(lineItems)) {
+        return res.status(400).json({ message: "Client and line items are required." });
     }
 
-    const clientExists = await Client.findById(clientId);
+    const clientExists = await Client.findById(client);
     if (!clientExists) {
-        res.status(404).json({ message: "Client not found" });
-        return;
+        return res.status(404).json({ message: "Client not found" });
     }
 
     let customerPriceList = null;
@@ -37,15 +32,73 @@ const createOffer = asyncHandler(async (req, res) => {
     }
 
     const processedLineItems = [];
-    for (const item of lineItems) {
-        const processedItem = await calculateLineItemPrice(item, globalMarginPercent, customerPriceList);
-        processedLineItems.push(processedItem);
+
+    for (let itemData of lineItems) {
+        const productDetails = await Product.findById(itemData.productId);
+
+        if (!productDetails) {
+            console.error(`Product not found for ID: ${itemData.productId}`);
+            continue;
+        }
+
+        let sourceBasePrice = 0;
+        let sourceCurrency = "USD";
+        let basePriceUSDForMargin = 0;
+        const pricingMethod = itemData.pricingMethod || "Margin";
+
+        // Priority 1: Price List
+        if (pricingMethod === "PriceList" && customerPriceList) {
+            const priceListItem = customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo);
+            if (priceListItem) {
+                sourceBasePrice = priceListItem.price;
+                sourceCurrency = priceListItem.currency || "USD";
+                basePriceUSDForMargin = sourceBasePrice;
+            }
+        }
+
+        // Priority 2: Product base price
+        if (!sourceBasePrice && productDetails.basePrice > 0) {
+            sourceBasePrice = productDetails.basePrice;
+            sourceCurrency = productDetails.baseCurrency || "USD";
+            basePriceUSDForMargin = sourceBasePrice;
+        }
+
+        // Priority 3: Supplier offers
+        if (!sourceBasePrice && productDetails.supplierOffers?.length > 0) {
+            let lowestSupplierPrice = Infinity;
+            for (const offer of productDetails.supplierOffers) {
+                if (offer.originalPrice < lowestSupplierPrice) {
+                    lowestSupplierPrice = offer.originalPrice;
+                    sourceBasePrice = offer.originalPrice;
+                    sourceCurrency = offer.originalCurrency || "USD";
+                    basePriceUSDForMargin = sourceBasePrice * (offer.usdPrice || 1);
+                }
+            }
+        }
+
+        // Final price calculation
+        let finalPriceUSD = basePriceUSDForMargin * (1 + (itemData.marginPercent || globalMarginPercent || 0) / 100);
+        let lineTotalUSD = finalPriceUSD * itemData.quantity;
+
+        processedLineItems.push({
+            productId: productDetails._id,
+            itemNo: productDetails.itemNo,
+            description: productDetails.description,
+            manufacturer: productDetails.manufacturer,
+            quantity: itemData.quantity || 1,
+            marginPercent: itemData.marginPercent || null,
+            pricingMethod: itemData.pricingMethod || "Margin",
+            basePrice: sourceBasePrice,
+            baseCurrency: sourceCurrency,
+            finalPriceUSD,
+            lineTotalUSD
+        });
     }
 
     const offerId = await generateNextOfferId();
-    const offer = new Offer({
+    const newOffer = new Offer({
         offerId,
-        client: clientId,
+        client,
         validityDate,
         terms,
         status,
@@ -54,109 +107,11 @@ const createOffer = asyncHandler(async (req, res) => {
         user: req.user._id
     });
 
-    const createdOffer = await offer.save();
+    const createdOffer = await newOffer.save();
     res.status(201).json(createdOffer);
 });
 
-// @desc    Calculate line item price based on currency, method, and protection
-const calculateLineItemPrice = async (item, globalMarginPercent, customerPriceList) => {
-    if (item.itemType === "manual") {
-        return {
-            ...item,
-            finalPriceUSD: 0,
-            lineTotalUSD: 0,
-            basePrice: 0,
-            baseCurrency: "USD"
-        };
-    }
-
-    const productDetails = await Product.findById(item.productId).select("itemNo description manufacturer basePrice baseCurrency supplierOffers");
-
-    if (!productDetails) {
-        throw new Error("Product details not found.");
-    }
-
-    let sourceBasePrice = 0;
-    let sourceCurrency = "USD";
-    let basePriceUSD_for_margin_calc = 0;
-
-    // Priority 1: Use Price List if available
-    if (customerPriceList && item.pricingMethod === "PriceList") {
-        const priceListItem = customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo);
-        if (priceListItem) {
-            sourceBasePrice = priceListItem.price;
-            sourceCurrency = priceListItem.currency || "USD";
-        }
-    }
-
-    // Priority 2: Use Product's own basePrice
-    if (basePriceUSD_for_margin_calc === 0 && productDetails.basePrice > 0) {
-        const rate = await getExchangeRate(productDetails.baseCurrency || "USD", "USD");
-        basePriceUSD_for_margin_calc = productDetails.basePrice * rate;
-        if ((productDetails.baseCurrency || "USD") !== "USD") {
-            basePriceUSD_for_margin_calc *= 1.03;
-        }
-    }
-
-    // Priority 3: Use Lowest Supplier Offer
-    if (basePriceUSD_for_margin_calc === 0 && productDetails.supplierOffers?.length > 0) {
-        let lowestSupplierPriceUSDWithProtection = Infinity;
-        let tempSourceBasePrice = 0;
-        let tempSourceCurrency = "USD";
-
-        for (const supOffer of productDetails.supplierOffers) {
-            if (supOffer.originalPrice && supOffer.originalCurrency) {
-                const supplierRate = await getExchangeRate(supOffer.originalCurrency, "USD");
-                let currentSupplierPriceUSD = supOffer.originalPrice * supplierRate;
-                if (supOffer.originalCurrency !== "USD") {
-                    currentSupplierPriceUSD *= 1.03; // Apply 3% currency protection
-                }
-                if (currentSupplierPriceUSD < lowestSupplierPriceUSDWithProtection) {
-                    lowestSupplierPriceUSDWithProtection = currentSupplierPriceUSD;
-                    tempSourceBasePrice = supOffer.originalPrice;
-                    tempSourceCurrency = supOffer.originalCurrency;
-                }
-            }
-        }
-
-        if (lowestSupplierPriceUSDWithProtection !== Infinity) {
-            basePriceUSD_for_margin_calc = lowestSupplierPriceUSDWithProtection;
-            sourceCurrency = tempSourceCurrency;
-            sourceBasePrice = tempSourceBasePrice;
-        }
-    }
-
-    // Final price calculation
-    let finalPricePerUnitUSD = basePriceUSD_for_margin_calc;
-
-    if (item.pricingMethod === "Margin") {
-        const marginToApply = (item.marginPercent !== null && item.marginPercent >= 0)
-            ? item.marginPercent
-            : (globalMarginPercent !== null && globalMarginPercent >= 0 ? globalMarginPercent : 0);
-
-        finalPricePerUnitUSD = basePriceUSD_for_margin_calc * (1 + marginToApply / 100);
-    }
-
-    const lineTotalUSD = finalPricePerUnitUSD * (item.quantity || 0);
-
-    return {
-        ...item,
-        productId: productDetails._id,
-        itemNo: productDetails.itemNo,
-        description: productDetails.description,
-        manufacturer: productDetails.manufacturer,
-        basePrice: sourceBasePrice,
-        baseCurrency: sourceCurrency,
-        pricingMethod: item.pricingMethod || "Margin",
-        marginPercent: (item.pricingMethod === 'Margin' && item.marginPercent !== null)
-            ? item.marginPercent
-            : null,
-        finalPriceUSD: finalPricePerUnitUSD,
-        lineTotalUSD: lineTotalUSD,
-    };
-};
-
-// Helper to generate next offer ID
+// Helper function for offer ID generation
 const generateNextOfferId = async () => {
     const date = new Date();
     const prefix = `OFFER-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-`;
@@ -164,7 +119,8 @@ const generateNextOfferId = async () => {
 
     let nextNum = 1;
     if (lastOffer) {
-        const lastNum = parseInt(lastOffer.offerId.split('-').pop(), 10);
+        const lastNumStr = lastOffer.offerId.split("-").pop();
+        const lastNum = parseInt(lastNumStr, 10);
         if (!isNaN(lastNum)) {
             nextNum = lastNum + 1;
         }
@@ -174,6 +130,5 @@ const generateNextOfferId = async () => {
 };
 
 module.exports = {
-    createOffer,
-    getProductsByManufacturerAndPartNumbers: require("./productController").getProductsByManufacturerAndPartNumbers
+    createOffer
 };
