@@ -1,8 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const Offer = require("../models/offerModel");
-const Client = require("../models/Client");
-const CustomerPriceList = require("../models/customerPriceListModel");
+const Client = require("../models/clientModel");
 const Product = require("../models/productModel");
+const CustomerPriceList = require("../models/customerPriceListModel");
 
 // @desc    Create new offer
 // @route   POST /api/offers
@@ -17,7 +17,7 @@ const createOffer = asyncHandler(async (req, res) => {
         lineItems
     } = req.body;
 
-    if (!client || !lineItems || !Array.isArray(lineItems)) {
+    if (!client || !Array.isArray(lineItems)) {
         return res.status(400).json({ message: "Client and line items are required." });
     }
 
@@ -52,7 +52,7 @@ const createOffer = asyncHandler(async (req, res) => {
             if (priceListItem) {
                 sourceBasePrice = priceListItem.price;
                 sourceCurrency = priceListItem.currency || "USD";
-                basePriceUSDForMargin = sourceBasePrice;
+                basePriceUSDForMargin = sourceBasePrice * (sourceCurrency !== "USD" ? 1.03 : 1);
             }
         }
 
@@ -60,25 +60,32 @@ const createOffer = asyncHandler(async (req, res) => {
         if (!sourceBasePrice && productDetails.basePrice > 0) {
             sourceBasePrice = productDetails.basePrice;
             sourceCurrency = productDetails.baseCurrency || "USD";
-            basePriceUSDForMargin = sourceBasePrice;
+            basePriceUSDForMargin = sourceBasePrice * (sourceCurrency !== "USD" ? 1.03 : 1);
         }
 
         // Priority 3: Supplier offers
         if (!sourceBasePrice && productDetails.supplierOffers?.length > 0) {
             let lowestSupplierPrice = Infinity;
-            for (const offer of productDetails.supplierOffers) {
-                if (offer.originalPrice < lowestSupplierPrice) {
-                    lowestSupplierPrice = offer.originalPrice;
-                    sourceBasePrice = offer.originalPrice;
-                    sourceCurrency = offer.originalCurrency || "USD";
-                    basePriceUSDForMargin = sourceBasePrice * (offer.usdPrice || 1);
+            let tempSourceBasePrice = 0;
+            let tempSourceCurrency = "USD";
+
+            for (const supOffer of productDetails.supplierOffers) {
+                if (supOffer.originalPrice < lowestSupplierPrice) {
+                    lowestSupplierPrice = supOffer.originalPrice;
+                    tempSourceBasePrice = supOffer.originalPrice;
+                    tempSourceCurrency = supOffer.originalCurrency || "USD";
                 }
+            }
+
+            if (lowestSupplierPrice !== Infinity) {
+                sourceBasePrice = tempSourceBasePrice;
+                sourceCurrency = tempSourceCurrency;
+                basePriceUSDForMargin = sourceBasePrice * (sourceCurrency !== "USD" ? 1.03 : 1);
             }
         }
 
-        // Final price calculation
-        let finalPriceUSD = basePriceUSDForMargin * (1 + (itemData.marginPercent || globalMarginPercent || 0) / 100);
-        let lineTotalUSD = finalPriceUSD * itemData.quantity;
+        let finalPriceUSD = basePriceUSDForMargin * (1 + ((itemData.marginPercent ?? globalMarginPercent ?? 0) / 100));
+        let lineTotalUSD = finalPriceUSD * (itemData.quantity || 1);
 
         processedLineItems.push({
             productId: productDetails._id,
@@ -86,7 +93,7 @@ const createOffer = asyncHandler(async (req, res) => {
             description: productDetails.description,
             manufacturer: productDetails.manufacturer,
             quantity: itemData.quantity || 1,
-            marginPercent: itemData.marginPercent || null,
+            marginPercent: itemData.marginPercent ?? null,
             pricingMethod: itemData.pricingMethod || "Margin",
             basePrice: sourceBasePrice,
             baseCurrency: sourceCurrency,
@@ -111,7 +118,7 @@ const createOffer = asyncHandler(async (req, res) => {
     res.status(201).json(createdOffer);
 });
 
-// Helper function for offer ID generation
+// Helper: Generate next offer ID
 const generateNextOfferId = async () => {
     const date = new Date();
     const prefix = `OFFER-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-`;
