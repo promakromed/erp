@@ -1,3 +1,5 @@
+// routes/offerRoutes.js
+
 const express = require("express");
 const router = express.Router();
 
@@ -15,31 +17,23 @@ const {
     generateOfferCsv
 } = require("../controllers/offerController");
 
-// @desc    Fetch all offers
+// @desc    GET all offers
 // @route   GET /api/offers
-router.route("/").get(protect, getOffers);
+router.route("/")
+    .get(protect, getOffers)
+    .post(protect, admin, createOffer);
 
-// @desc    Fetch single offer by ID
-// @route   GET /api/offers/:id
-router.route("/:id").get(protect, getOfferById);
+// @desc    GET / UPDATE / DELETE single offer
+router.route("/:id")
+    .get(protect, getOfferById)
+    .put(protect, admin, updateOffer)
+    .delete(protect, admin, deleteOffer);
 
-// @desc    Create new offer
-// @route   POST /api/offers
-router.route("/").post(protect, admin, createOffer);
-
-// @desc    Update existing offer
-// @route   PUT /api/offers/:id
-router.route("/:id").put(protect, admin, updateOffer);
-
-// @desc    Delete offer (only if Draft)
-// @route   DELETE /api/offers/:id
-router.route("/:id").delete(protect, admin, deleteOffer);
-
-// @desc    Generate PDF of an offer
+// @desc    Generate PDF of offer
 // @route   GET /api/offers/:id/pdf
 router.route("/:id/pdf").get(protect, generateOfferPdf);
 
-// @desc    Generate CSV of an offer
+// @desc    Generate CSV of offer
 // @route   GET /api/offers/:id/csv
 router.route("/:id/csv").get(protect, generateOfferCsv);
 
