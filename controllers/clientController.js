@@ -3,13 +3,13 @@ const Client = require("../models/clientModel");
 
 // @desc    Fetch all clients
 // @route   GET /api/clients
-// @access  Private
+// @access  Private/Admin
 const getClients = asyncHandler(async (req, res) => {
     const clients = await Client.find({});
-    res.json(clists);
+    res.json(clients);
 });
 
-// @desc    Fetch single client by ID
+// @desc    Get client by ID
 // @route   GET /api/clients/:id
 // @access  Private
 const getClientById = asyncHandler(async (req, res) => {
@@ -17,12 +17,11 @@ const getClientById = asyncHandler(async (req, res) => {
     if (client) {
         res.json(client);
     } else {
-        res.status(404);
-        throw new Error("Client not found");
+        res.status(404).json({ message: "Client not found" });
     }
 });
 
-// @desc    Create client
+// @desc    Create new client
 // @route   POST /api/clients
 // @access  Private/Admin
 const createClient = asyncHandler(async (req, res) => {
@@ -40,7 +39,7 @@ const createClient = asyncHandler(async (req, res) => {
         priceListId
     } = req.body;
 
-    const client = new Client({
+    const newClient = new Client({
         companyName,
         clientName,
         contactPerson,
@@ -54,19 +53,17 @@ const createClient = asyncHandler(async (req, res) => {
         priceListId
     });
 
-    const createdClient = await client.save();
+    const createdClient = await newClient.save();
     res.status(201).json(createdClient);
 });
 
-// @desc    Update client
+// @desc    Update existing client
 // @route   PUT /api/clients/:id
 // @access  Private/Admin
 const updateClient = asyncHandler(async (req, res) => {
     const client = await Client.findById(req.params.id);
-
     if (!client) {
-        res.status(404);
-        throw new Error("Client not found");
+        return res.status(404).json({ message: "Client not found" });
     }
 
     Object.keys(req.body).forEach(key => {
@@ -82,14 +79,12 @@ const updateClient = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const deleteClient = asyncHandler(async (req, res) => {
     const client = await Client.findById(req.params.id);
-
     if (!client) {
-        res.status(404);
-        throw new Error("Client not found");
+        return res.status(404).json({ message: "Client not found" });
     }
 
     await client.remove();
-    res.json({ message: "Client removed" });
+    res.json({ message: "Client deleted successfully" });
 });
 
 module.exports = {
