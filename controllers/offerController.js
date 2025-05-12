@@ -197,6 +197,22 @@ const createOffer = asyncHandler(async (req, res) => {
     res.status(201).json(createdOffer);
 });
 
+// @desc    Get all offers
+// @route   GET /api/offers
+// @access  Private/Admin (or Private if all users can see their offers)
+const getOffers = asyncHandler(async (req, res) => {
+    try {
+        // TODO: Add filtering by user if non-admins should only see their own offers
+        // Example: const offers = await Offer.find({ user: req.user._id }).populate('client', 'name').sort({ createdAt: -1 });
+        const offers = await Offer.find({}).populate('client', 'name').sort({ createdAt: -1 });
+        res.status(200).json(offers); // Send the actual array of offers
+    } catch (error) {
+        console.error('Error fetching offers:', error);
+        res.status(500).json({ message: 'Error fetching offers' });
+    }
+});
+
+
 // Helper: Generate next offer ID
 const generateNextOfferId = async () => {
     const date = new Date();
@@ -216,5 +232,7 @@ const generateNextOfferId = async () => {
 };
 
 module.exports = {
-    createOffer
+    createOffer,
+    getOffers // Added getOffers to exports
 };
+
