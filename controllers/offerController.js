@@ -3,24 +3,20 @@ const Offer = require("../models/offerModel");
 const Client = require("../models/clientModel");
 const Product = require("../models/productModel");
 const CustomerPriceList = require("../models/customerPriceListModel");
-const axios = require("axios"); // Added for API calls
+const axios = require("axios");
 
-// Helper function for live exchange rates
+// Helper function for live exchange rates (existing)
 const getExchangeRate = async (fromCurrency, toCurrency) => {
     if (fromCurrency === toCurrency) return 1;
-
     const apiKey = process.env.EXCHANGE_RATE_API_KEY;
     if (!apiKey) {
         console.error("ERROR: EXCHANGE_RATE_API_KEY environment variable not set.");
-        // Fallback to placeholder or throw error, for now, using placeholder
         if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
         if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
         console.warn(`Exchange rate API key not found. Using placeholder for ${fromCurrency} to ${toCurrency}.`);
         return 1;
     }
-
     const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey}/pair/${fromCurrency}/${toCurrency}`;
-
     try {
         const response = await axios.get(apiUrl);
         if (response.data && response.data.result === "success" && response.data.conversion_rate) {
@@ -28,21 +24,19 @@ const getExchangeRate = async (fromCurrency, toCurrency) => {
             return response.data.conversion_rate;
         } else {
             console.error(`Error fetching live rate for ${fromCurrency} to ${toCurrency}: API response unsuccessful or malformed.`, response.data);
-            // Fallback to placeholder on API error
             if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
             if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
             return 1;
         }
     } catch (error) {
         console.error(`Error calling exchange rate API for ${fromCurrency} to ${toCurrency}:`, error.message);
-        // Fallback to placeholder on network/request error
         if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
         if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
         return 1;
     }
 };
 
-// @desc    Create new offer
+// @desc    Create new offer (existing)
 // @route   POST /api/offers
 // @access  Private/Admin
 const createOffer = asyncHandler(async (req, res) => {
@@ -54,44 +48,35 @@ const createOffer = asyncHandler(async (req, res) => {
         globalMarginPercent,
         lineItems
     } = req.body;
-
     if (!client || !Array.isArray(lineItems)) {
         return res.status(400).json({ message: "Client and line items are required." });
     }
-
     const clientExists = await Client.findById(client);
     if (!clientExists) {
         return res.status(404).json({ message: "Client not found" });
     }
-
     let customerPriceList = null;
     if (clientExists.priceListId) {
         customerPriceList = await CustomerPriceList.findById(clientExists.priceListId);
     }
-
     const processedLineItems = [];
-
     for (let itemData of lineItems) {
         if (!itemData.productId && !(itemData.isManual === true)) {
             console.warn(`Skipping line item due to missing productId and not being manual: ${JSON.stringify(itemData)}`);
             continue;
         }
-
         let productDetails = null;
         if (itemData.productId) {
              productDetails = await Product.findById(itemData.productId);
         }
-       
         if (!productDetails && !(itemData.isManual === true)) {
             console.error(`Product not found for ID: ${itemData.productId}. Skipping item.`);
             continue;
         }
-
         let sourceBasePrice = 0;
         let sourceCurrency = "USD";
         let basePriceUSDForMargin = 0;
         const pricingMethod = itemData.pricingMethod || "Margin";
-
         if (itemData.isManual === true) {
             sourceBasePrice = itemData.basePrice || 0;
             sourceCurrency = itemData.baseCurrency || "USD";
@@ -101,7 +86,6 @@ const createOffer = asyncHandler(async (req, res) => {
                 basePriceUSDForMargin *= 1.03; // Apply 3% currency protection
             }
         } else if (productDetails) {
-            // Priority 1: Price List
             if (pricingMethod === "PriceList" && customerPriceList) {
                 const priceListItem = customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo);
                 if (priceListItem) {
@@ -114,8 +98,6 @@ const createOffer = asyncHandler(async (req, res) => {
                     }
                 }
             }
-
-            // Priority 2: Product base price
             if (basePriceUSDForMargin === 0 && productDetails.basePrice && productDetails.basePrice > 0) {
                 sourceBasePrice = productDetails.basePrice;
                 sourceCurrency = productDetails.baseCurrency || "USD";
@@ -125,13 +107,10 @@ const createOffer = asyncHandler(async (req, res) => {
                     basePriceUSDForMargin *= 1.03; // Apply 3% currency protection
                 }
             }
-
-            // Priority 3: Supplier offers
             if (basePriceUSDForMargin === 0 && productDetails.supplierOffers?.length > 0) {
                 let lowestSupplierPriceUSDWithProtection = Infinity;
                 let tempSourceBasePrice = 0;
                 let tempSourceCurrency = "USD";
-
                 for (const supOffer of productDetails.supplierOffers) {
                     if (supOffer.originalPrice && supOffer.originalCurrency) {
                         const supplierRate = await getExchangeRate(supOffer.originalCurrency, "USD");
@@ -146,7 +125,6 @@ const createOffer = asyncHandler(async (req, res) => {
                         }
                     }
                 }
-
                 if (lowestSupplierPriceUSDWithProtection !== Infinity) {
                     sourceBasePrice = tempSourceBasePrice;
                     sourceCurrency = tempSourceCurrency;
@@ -154,7 +132,6 @@ const createOffer = asyncHandler(async (req, res) => {
                 }
             }
         }
-
         let finalPriceUSD = basePriceUSDForMargin;
         if (pricingMethod === "Margin" || itemData.isManual === true) {
              const marginToApply = (itemData.marginPercent !== null && itemData.marginPercent !== undefined) 
@@ -162,9 +139,7 @@ const createOffer = asyncHandler(async (req, res) => {
                                 : (globalMarginPercent !== null && globalMarginPercent !== undefined ? globalMarginPercent : 0);
             finalPriceUSD = basePriceUSDForMargin * (1 + (marginToApply / 100));
         }
-       
         let lineTotalUSD = finalPriceUSD * (itemData.quantity || 1);
-
         processedLineItems.push({
             isManual: itemData.isManual === true,
             productId: productDetails ? productDetails._id : null,
@@ -180,7 +155,6 @@ const createOffer = asyncHandler(async (req, res) => {
             lineTotalUSD: parseFloat(lineTotalUSD.toFixed(2))
         });
     }
-
     const offerId = await generateNextOfferId();
     const newOffer = new Offer({
         offerId,
@@ -192,33 +166,42 @@ const createOffer = asyncHandler(async (req, res) => {
         lineItems: processedLineItems,
         user: req.user._id 
     });
-
     const createdOffer = await newOffer.save();
     res.status(201).json(createdOffer);
 });
 
-// @desc    Get all offers
+// @desc    Get all offers (existing)
 // @route   GET /api/offers
-// @access  Private/Admin (or Private if all users can see their offers)
+// @access  Private/Admin
 const getOffers = asyncHandler(async (req, res) => {
     try {
-        // TODO: Add filtering by user if non-admins should only see their own offers
-        // Example: const offers = await Offer.find({ user: req.user._id }).populate('client', 'name').sort({ createdAt: -1 });
-        const offers = await Offer.find({}).populate('client', 'name').sort({ createdAt: -1 });
-        res.status(200).json(offers); // Send the actual array of offers
+        const offers = await Offer.find({}).populate('client', 'name companyName').sort({ createdAt: -1 }); // Also populate companyName for virtual
+        res.status(200).json(offers);
     } catch (error) {
         console.error('Error fetching offers:', error);
         res.status(500).json({ message: 'Error fetching offers' });
     }
 });
 
+// @desc    Get single offer by ID
+// @route   GET /api/offers/:id
+// @access  Private/Admin
+const getOfferById = asyncHandler(async (req, res) => {
+    const offer = await Offer.findById(req.params.id).populate('client', 'name companyName'); // Populate client details
 
-// Helper: Generate next offer ID
+    if (offer) {
+        res.status(200).json(offer);
+    } else {
+        res.status(404);
+        throw new Error('Offer not found');
+    }
+});
+
+// Helper: Generate next offer ID (existing)
 const generateNextOfferId = async () => {
     const date = new Date();
     const prefix = `OFFER-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-`;
     const lastOffer = await Offer.findOne({ offerId: { $regex: `^${prefix}` } }).sort({ createdAt: -1 });
-
     let nextNum = 1;
     if (lastOffer) {
         const lastNumStr = lastOffer.offerId.split("-").pop();
@@ -227,12 +210,12 @@ const generateNextOfferId = async () => {
             nextNum = lastNum + 1;
         }
     }
-
     return `${prefix}${String(nextNum).padStart(3, '0')}`;
 };
 
 module.exports = {
     createOffer,
-    getOffers // Added getOffers to exports
+    getOffers,
+    getOfferById // Added getOfferById to exports
 };
 
