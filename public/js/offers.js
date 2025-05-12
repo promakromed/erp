@@ -1,13 +1,13 @@
-// offers_v21.js
-// Corrects displayOffers to build a table within the div#offer-list-container
+// offers_v22.js
+// Adds "Create New Offer" button functionality and URL hash handling.
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v21): DOMContentLoaded event fired");
+    console.log("DEBUG (v22): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
     const offerFormSection = document.getElementById("offer-form-section");
-    const offerListContainer = document.getElementById("offer-list-container"); // This is a DIV
+    const offerListContainer = document.getElementById("offer-list-container");
     const offerForm = document.getElementById("offer-form");
     const lineItemsBody = document.getElementById("line-items-body");
     const offerIdDisplay = document.getElementById("offer-id-display");
@@ -16,9 +16,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const termsInput = document.getElementById("offer-terms");
     const statusSelect = document.getElementById("offer-status");
     const globalMarginInput = document.getElementById("offer-global-margin");
-    const createOfferBtn = document.getElementById("create-offer-btn");
+    
+    // Buttons in the form section
+    const createOfferBtn = document.getElementById("create-offer-btn"); // This is the SUBMIT button for NEW offers
+    const saveOfferBtn = document.getElementById("save-offer-btn");     // This is the SUBMIT button for EDITED offers
     const cancelOfferBtn = document.getElementById("cancel-offer-btn");
+    const deleteOfferBtn = document.getElementById("delete-offer-btn");
     const addItemBtn = document.getElementById("add-item-btn");
+    const generatePdfBtn = document.getElementById("generate-pdf-btn");
+    const generateCsvBtn = document.getElementById("generate-csv-btn");
+
+    // New button on the list page to show the create form
+    const showCreateOfferFormBtn = document.getElementById("show-create-offer-form-btn"); 
+
     const loadingIndicator = document.getElementById("loading-indicator");
     const errorMessage = document.getElementById("error-message");
     const logoutButton = document.getElementById("logout-button");
@@ -28,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const bulkAddBtn = document.getElementById("bulk-add-button");
     const bulkAddStatus = document.getElementById("bulk-add-status");
 
-    let currentOfferId = null;
+    let currentOfferId = null; // Stores the ID of the offer being edited, or null for new offers
 
     // --- Utility Functions ---
     function checkAuth() {
@@ -82,6 +92,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (offerListSection) offerListSection.style.display = "block";
         if (offerFormSection) offerFormSection.style.display = "none";
         currentOfferId = null;
+        if (window.location.hash === "#new") {
+            window.location.hash = ""; // Clear hash if user cancels from new
+        }
         loadOffers();
     }
 
@@ -103,11 +116,27 @@ document.addEventListener("DOMContentLoaded", () => {
             if (globalMarginInput) globalMarginInput.value = offerToEdit.globalMarginPercent || 0;
             
             offerToEdit.lineItems.forEach(item => addLineItemRow(item, item.isManual));
-        } else {
+
+            if (createOfferBtn) createOfferBtn.classList.add("d-none");
+            if (saveOfferBtn) saveOfferBtn.classList.remove("d-none");
+            if (deleteOfferBtn) deleteOfferBtn.classList.remove("d-none");
+            if (cancelOfferBtn) cancelOfferBtn.classList.remove("d-none");
+            if (generatePdfBtn) generatePdfBtn.classList.remove("d-none");
+            if (generateCsvBtn) generateCsvBtn.classList.remove("d-none");
+
+        } else { // New Offer
             currentOfferId = null;
-            if (offerIdDisplay) offerIdDisplay.textContent = "New Offer";
+            if (offerIdDisplay) offerIdDisplay.textContent = "Creating New Offer";
+            
+            if (createOfferBtn) createOfferBtn.classList.remove("d-none");
+            if (saveOfferBtn) saveOfferBtn.classList.add("d-none");
+            if (deleteOfferBtn) deleteOfferBtn.classList.add("d-none");
+            if (cancelOfferBtn) cancelOfferBtn.classList.remove("d-none");
+            if (generatePdfBtn) generatePdfBtn.classList.add("d-none"); // Hide export for new unsaved offer
+            if (generateCsvBtn) generateCsvBtn.classList.add("d-none"); // Hide export for new unsaved offer
         }
         populateClientDropdown(offerToEdit ? (offerToEdit.client?._id || offerToEdit.client) : null);
+        populateManufacturerDropdown(); // For bulk add
     }
 
     // --- Core Offer Functions ---
@@ -123,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseData = await response.json();
-            console.log("DEBUG (v21): Raw response from /api/offers:", responseData);
+            console.log("DEBUG (v22): Raw response from /api/offers:", responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
@@ -132,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error fetching offers: ${error.message}`);
-            console.error("DEBUG (v21): Error in loadOffers:", error);
+            console.error("DEBUG (v22): Error in loadOffers:", error);
             if (offerListContainer) {
                 offerListContainer.innerHTML = `<p class="text-center text-danger">Error loading offers: ${error.message}</p>`;
             }
@@ -141,10 +170,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function displayOffers(offersData) {
         if (!offerListContainer) {
-            console.error("DEBUG (v21): offerListContainer element not found!");
+            console.error("DEBUG (v22): offerListContainer element not found!");
             return;
         }
-        offerListContainer.innerHTML = ""; // Clear the div
+        offerListContainer.innerHTML = ""; 
 
         const offers = Array.isArray(offersData) ? offersData : (offersData.data || []);
 
@@ -157,9 +186,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Create table elements dynamically
         const table = document.createElement("table");
-        table.className = "table table-striped table-hover"; // Add Bootstrap classes
+        table.className = "table table-striped table-hover";
         
         const thead = table.createTHead();
         const headerRow = thead.insertRow();
@@ -181,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${offer.status || "N/A"}</td>
                 <td>${formatDateEuropean(offer.validityDate)}</td>
                 <td>${formatDateEuropean(offer.updatedAt)}</td>
-                <td>
+                <td class="action-buttons">
                     <button class="btn btn-sm btn-info edit-offer-btn" data-id="${offer._id}"><i class="fas fa-edit"></i></button>
                     <button class="btn btn-sm btn-danger delete-offer-btn" data-id="${offer._id}"><i class="fas fa-trash-alt"></i></button>
                     <button class="btn btn-sm btn-secondary pdf-offer-btn" data-id="${offer._id}"><i class="fas fa-file-pdf"></i></button>
@@ -190,7 +218,31 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         });
 
-        offerListContainer.appendChild(table); // Append the new table to the div
+        offerListContainer.appendChild(table);
+    }
+
+    async function loadOfferForEditing(offerId) {
+        if (!checkAuth()) return;
+        const token = getAuthToken();
+        showLoading(true);
+        showError("");
+        try {
+            const response = await fetch(`/api/offers/${offerId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            showLoading(false);
+            const responseData = await response.json();
+            console.log(`DEBUG (v22): Raw response from /api/offers/${offerId}:`, responseData);
+
+            if (!response.ok) {
+                throw new Error(responseData.message || `HTTP error! status: ${response.status} - ${response.statusText}`);
+            }
+            showOfferForm(responseData);
+        } catch (error) {
+            showLoading(false);
+            showError(`Error loading offer for editing: ${error.message}`);
+            console.error("DEBUG (v22): Error in loadOfferForEditing:", error);
+        }
     }
 
     async function populateClientDropdown(selectedClientId = null) {
@@ -210,15 +262,37 @@ document.addEventListener("DOMContentLoaded", () => {
             actualClients.forEach(client => {
                 const option = document.createElement("option");
                 option.value = client._id;
-                option.textContent = client.name || client.companyName || "Unnamed Client";
+                option.textContent = client.name || client.companyName || "Unnamed Client"; // We will address this later
                 if (client._id === selectedClientId) {
                     option.selected = true;
                 }
                 clientSelect.appendChild(option);
             });
         } catch (error) {
-            console.error("DEBUG (v21): Error populating client dropdown:", error);
+            console.error("DEBUG (v22): Error populating client dropdown:", error);
             showError("Could not load clients for dropdown.");
+        }
+    }
+
+    async function populateManufacturerDropdown() {
+        if (!bulkAddManufacturerSelect) return;
+        const token = getAuthToken();
+        if (!token) return;
+        try {
+            const response = await fetch("/api/products/manufacturers", { 
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error("Failed to load manufacturers");
+            const manufacturers = await response.json();
+            bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
+            manufacturers.forEach(m => {
+                const option = document.createElement("option");
+                option.value = m;
+                option.textContent = m;
+                bulkAddManufacturerSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error("DEBUG (v22): Error populating manufacturer dropdown:", error);
         }
     }
     
@@ -231,9 +305,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const quantity = parseInt(quantityInput.value) || 0;
         let itemMarginPercent = marginInput?.value.trim() !== "" ? parseFloat(marginInput.value) : null;
-        let effectiveMarginPercent = itemMarginPercent ?? parseFloat(globalMarginInput.value) ?? 0;
+        let globalMarginValue = globalMarginInput?.value.trim() !== "" ? parseFloat(globalMarginInput.value) : 0;
+        if (isNaN(globalMarginValue)) globalMarginValue = 0;
 
-        if (isNaN(effectiveMarginPercent)) effectiveMarginPercent = 0;
+        let effectiveMarginPercent = itemMarginPercent ?? globalMarginValue;
 
         const unitPrice = basePriceForMargin * (1 + effectiveMarginPercent / 100);
         const lineTotal = unitPrice * quantity;
@@ -247,7 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const rows = lineItemsBody.querySelectorAll("tr");
         rows.forEach(row => {
             const marginInput = row.querySelector(".item-margin-percent");
-            if (!marginInput || marginInput.value.trim() === "") {
+            if (!marginInput || marginInput.value.trim() === "") { // Only update if item margin is blank (uses global)
                 updateAndDisplayItemPrice(row);
             }
         });
@@ -258,7 +333,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const newRow = lineItemsBody.insertRow();
         newRow.dataset.isManual = isManualEntry.toString();
         newRow.dataset.productId = itemData.productId || (itemData.product?._id || "");
-        newRow.dataset.basePriceForMargin = (itemData.basePriceUSDForMarginApplication || itemData.basePriceUSDForMargin || itemData.basePrice || 0).toString();
+        // Ensure basePriceForMargin is correctly sourced
+        let basePriceForMarginCalc = itemData.basePriceUSDForMarginApplication || itemData.basePriceUSDForMargin || itemData.basePrice || 0;
+        if (itemData.pricingMethod === "PriceList" && itemData.basePrice && itemData.baseCurrency !== "USD") {
+            // If price list item, basePriceForMargin should already be USD converted
+            // This part might need review based on how createOffer sets basePriceUSDForMarginApplication
+        } else if (isManualEntry && itemData.basePrice && itemData.baseCurrency !== "USD") {
+            // For manual, basePrice is in original currency, need conversion if not USD
+            // This logic should ideally happen before addLineItemRow or be passed in as USD
+        }
+        newRow.dataset.basePriceForMargin = basePriceForMarginCalc.toString();
 
         newRow.innerHTML = `
             <td><input type="text" class="form-control item-number" value="${itemData.itemNo || ""}" ${!isManualEntry && itemData.itemNo ? "readonly" : ""}></td>
@@ -288,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const marginInput = row.querySelector(".item-margin-percent");
                 
                 if (row.dataset.isManual === "true" && !itemNumberInput.value.trim() && !descriptionInput.value.trim()) {
-                    return;
+                    return; // Skip empty manual rows
                 }
 
                 lineItemsData.push({
@@ -299,9 +383,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     quantity: parseInt(quantityInput.value) || 1,
                     marginPercent: marginInput.value.trim() === "" ? null : parseFloat(marginInput.value),
                     isManual: row.dataset.isManual === "true",
-                    basePrice: row.dataset.isManual === "true" ? (parseFloat(row.dataset.basePriceForMargin) || 0) : undefined,
-                    baseCurrency: row.dataset.isManual === "true" ? "USD" : undefined,
-                    basePriceUSDForMarginApplication: parseFloat(row.dataset.basePriceForMargin) || 0
+                    // For manual items, basePrice and baseCurrency might be needed if backend expects them
+                    basePrice: row.dataset.isManual === "true" ? (parseFloat(row.dataset.basePriceForMargin) || 0) : undefined, // Assuming basePriceForMargin is what we want to send as basePrice for manual
+                    baseCurrency: row.dataset.isManual === "true" ? "USD" : undefined, // Assuming USD for now for manual items if not specified
+                    basePriceUSDForMarginApplication: parseFloat(row.dataset.basePriceForMargin) || 0 // Ensure this is sent if backend uses it
                 });
             });
         }
@@ -334,122 +419,42 @@ document.addEventListener("DOMContentLoaded", () => {
             const responseData = await response.json();
 
             if (!response.ok) {
-                throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
+                throw new Error(responseData.message || `HTTP error! status: ${response.status} - ${responseData.error || response.statusText}`);
             }
-            alert(`Offer ${currentOfferId ? "updated" : "created"} successfully! Offer ID: ${responseData.offerId || responseData._id}`);
-            showOfferList();
+            alert("Offer saved successfully!");
+            showOfferList(); 
         } catch (error) {
             showLoading(false);
             showError(`Error saving offer: ${error.message}`);
-            console.error("DEBUG (v21): Error in saveOffer:", error);
+            console.error("DEBUG (v22): Error in saveOffer:", error);
         }
     }
 
-    async function loadOfferForEditing(id) {
-        if (!checkAuth()) return;
-        const token = getAuthToken();
-        showLoading(true);
-        showError("");
-        try {
-            const response = await fetch(`/api/offers/${id}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            showLoading(false);
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || `HTTP error! status: ${response.status}`);
-            }
-            const offerData = await response.json();
-            showOfferForm(offerData);
-        } catch (error) {
-            showLoading(false);
-            showError(`Error loading offer for editing: ${error.message}`);
-            console.error("DEBUG (v21): Error in loadOfferForEditing:", error);
-        }
-    }
-
-    async function deleteOffer(id) {
+    async function deleteOffer(offerId) {
         if (!checkAuth() || !confirm("Are you sure you want to delete this offer?")) return;
         const token = getAuthToken();
         showLoading(true);
         showError("");
         try {
-            const response = await fetch(`/api/offers/${id}`, {
+            const response = await fetch(`/api/offers/${offerId}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });
             showLoading(false);
             if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || `HTTP error! status: ${response.status}`);
+                const responseData = await response.json().catch(() => ({})); // Try to parse JSON, default to empty if fails
+                throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
             }
-            alert("Offer deleted successfully.");
-            loadOffers();
+            alert("Offer deleted successfully!");
+            loadOffers(); // Refresh the list
         } catch (error) {
             showLoading(false);
             showError(`Error deleting offer: ${error.message}`);
-            console.error("DEBUG (v21): Error in deleteOffer:", error);
+            console.error("DEBUG (v22): Error in deleteOffer:", error);
         }
     }
 
-    async function generateOfferOutput(id, format) {
-        if (!checkAuth()) return;
-        const token = getAuthToken();
-        showLoading(true);
-        showError("");
-        try {
-            const response = await fetch(`/api/offers/${id}/${format}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            showLoading(false);
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || `HTTP error! status: ${response.status}`);
-            }
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `offer_${id}.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            showLoading(false);
-            showError(`Error generating ${format.toUpperCase()}: ${error.message}`);
-            console.error(`DEBUG (v21): Error generating ${format} output:`, error);
-        }
-    }
-    
-    async function populateManufacturerDropdown() {
-        if (!bulkAddManufacturerSelect) return;
-        const token = getAuthToken();
-        if (!token) return;
-        bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Loading manufacturers...</option>";
-        try {
-            const response = await fetch("/api/products/manufacturers", {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error("Failed to load manufacturers");
-            const manufacturers = await response.json();
-            const actualManufacturers = Array.isArray(manufacturers) ? manufacturers : (manufacturers.data || []);
-            bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Select Manufacturer...</option>";
-            actualManufacturers.forEach(mfg => {
-                const option = document.createElement("option");
-                const mfgName = typeof mfg === "string" ? mfg : (mfg.name || mfg);
-                option.value = mfgName;
-                option.textContent = mfgName;
-                bulkAddManufacturerSelect.appendChild(option);
-            });
-        } catch (error) {
-            console.error("DEBUG (v21): Error populating manufacturer dropdown:", error);
-            bulkAddManufacturerSelect.innerHTML = "<option value=\"\">Error loading</option>";
-            showBulkAddStatus("Could not load manufacturers for bulk add.", true);
-        }
-    }
-
-    async function handleBulkAddItems() {
+    async function handleBulkAdd() {
         if (!checkAuth()) return;
         const token = getAuthToken();
         const manufacturer = bulkAddManufacturerSelect.value;
@@ -463,127 +468,158 @@ document.addEventListener("DOMContentLoaded", () => {
             showBulkAddStatus("Please enter part numbers.", true);
             return;
         }
-        const partNumbers = partNumbersText.split(/\s*[\n,;]+\s*/).map(pn => pn.trim()).filter(pn => pn);
+
+        const partNumbers = partNumbersText.split(/[,\n\s]+/).map(pn => pn.trim()).filter(pn => pn);
         if (partNumbers.length === 0) {
             showBulkAddStatus("No valid part numbers entered.", true);
             return;
         }
 
         showLoading(true);
-        showBulkAddStatus("Processing...", false);
+        showBulkAddStatus("Processing items...");
 
         try {
-            const response = await fetch("/api/products/byManufacturerAndPartNumbers", {
+            const response = await fetch("/api/products/bulk-by-manufacturer", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ manufacturer, partNumbers })
+                body: JSON.stringify({ manufacturer, itemNumbers: partNumbers })
             });
             showLoading(false);
             const products = await response.json();
+
             if (!response.ok) {
-                throw new Error(products.message || "Error fetching products for bulk add");
+                throw new Error(products.message || "Error fetching products for bulk add.");
             }
-            
-            const actualProducts = Array.isArray(products) ? products : (products.data || []);
-            if (actualProducts.length === 0) {
-                showBulkAddStatus("No products found for the given criteria.", true);
-                return;
-            }
-            actualProducts.forEach(product => {
-                const itemData = {
-                    productId: product._id,
-                    itemNo: product.itemNo,
-                    manufacturer: product.manufacturer,
-                    description: product.description,
-                    quantity: 1,
-                    marginPercent: null,
-                    basePriceUSDForMarginApplication: product.basePriceUSDForMarginApplication || product.basePrice || 0, 
-                    isManual: false
-                };
-                addLineItemRow(itemData, false);
+
+            let itemsAddedCount = 0;
+            let itemsNotFound = [];
+            products.forEach(product => {
+                if (product && product._id) { // Check if product was found
+                    // Adapt product structure to match what addLineItemRow expects for itemData
+                    const itemData = {
+                        productId: product._id,
+                        itemNo: product.itemNo,
+                        manufacturer: product.manufacturer,
+                        description: product.description,
+                        quantity: 1, // Default quantity
+                        // Base price calculation will happen in addLineItemRow/updateAndDisplayItemPrice
+                        // We need to ensure the backend /api/products/bulk-by-manufacturer returns basePrice and baseCurrency
+                        // or the necessary fields for the pricing logic (e.g., supplierOffers)
+                        basePrice: product.basePrice, 
+                        baseCurrency: product.baseCurrency,
+                        basePriceUSDForMargin: product.basePriceUSD, // Assuming backend calculates this if needed
+                        finalPriceUSD: 0, // Will be calculated
+                        lineTotalUSD: 0   // Will be calculated
+                    };
+                    addLineItemRow(itemData, false);
+                    itemsAddedCount++;
+                } else if (product && product.itemNo && !product._id) { // Item number was searched but not found
+                    itemsNotFound.push(product.itemNo);
+                }
             });
-            showBulkAddStatus(`${actualProducts.length} items added. Adjust quantities and margins as needed.`, false);
-            bulkAddPartNumbersTextarea.value = "";
+            
+            let statusMessage = `${itemsAddedCount} item(s) added.`;
+            if (itemsNotFound.length > 0) {
+                statusMessage += ` ${itemsNotFound.length} item(s) not found: ${itemsNotFound.join(", ")}.`;
+            }
+            showBulkAddStatus(statusMessage, itemsNotFound.length > 0 && itemsAddedCount === 0);
+            bulkAddPartNumbersTextarea.value = ""; // Clear textarea
 
         } catch (error) {
             showLoading(false);
-            showBulkAddStatus(`Error bulk adding items: ${error.message}`, true);
-            console.error("DEBUG (v21): Error in handleBulkAddItems:", error);
+            showBulkAddStatus(`Error during bulk add: ${error.message}`, true);
+            console.error("DEBUG (v22): Error in handleBulkAdd:", error);
         }
     }
 
-    // --- Event Listeners Setup ---
-    function setupEventListeners() {
-        if (createOfferBtn) {
-            createOfferBtn.addEventListener("click", () => showOfferForm());
-        }
-        if (cancelOfferBtn) {
-            cancelOfferBtn.addEventListener("click", showOfferList);
-        }
-        if (offerForm) {
-            offerForm.addEventListener("submit", saveOffer);
-        }
-        if (addItemBtn) {
-            addItemBtn.addEventListener("click", () => addLineItemRow({}, true));
-        }
-        if (globalMarginInput) {
-            globalMarginInput.addEventListener("change", recalculateAllPrices);
-        }
-        if (lineItemsBody) {
-            lineItemsBody.addEventListener("click", (event) => {
-                if (event.target.closest(".remove-item-btn")) {
-                    event.target.closest("tr").remove();
-                    recalculateAllPrices(); 
-                }
-            });
-            lineItemsBody.addEventListener("change", (event) => {
-                if (event.target.classList.contains("item-quantity") || event.target.classList.contains("item-margin-percent")) {
-                    updateAndDisplayItemPrice(event.target.closest("tr"));
-                }
-            });
-        }
-        if (offerListContainer) {
-            offerListContainer.addEventListener("click", (event) => {
-                const targetButton = event.target.closest("button");
-                if (!targetButton) return;
-
-                const offerId = targetButton.dataset.id;
-                if (targetButton.classList.contains("edit-offer-btn")) {
-                    loadOfferForEditing(offerId);
-                }
-                if (targetButton.classList.contains("delete-offer-btn")) {
-                    deleteOffer(offerId);
-                }
-                if (targetButton.classList.contains("pdf-offer-btn")) {
-                    generateOfferOutput(offerId, "pdf");
-                }
-                if (targetButton.classList.contains("csv-offer-btn")) {
-                    generateOfferOutput(offerId, "csv");
-                }
-            });
-        }
-        if (logoutButton) {
-            logoutButton.addEventListener("click", () => {
-                localStorage.removeItem("userInfo");
-                window.location.href = "/login.html";
-            });
-        }
-        if (bulkAddBtn) {
-            bulkAddBtn.addEventListener("click", handleBulkAddItems);
-        }
+    // --- Event Listeners ---
+    if (logoutButton) {
+        logoutButton.addEventListener("click", () => {
+            localStorage.removeItem("userInfo");
+            window.location.href = "/login.html";
+        });
     }
 
-    // --- Initial Page Load ---
-    if (checkAuth()) {
-        showOfferList();
-        populateClientDropdown();
-        populateManufacturerDropdown();
-        setupEventListeners();
+    if (offerForm) {
+        offerForm.addEventListener("submit", saveOffer);
+    }
+
+    if (addItemBtn) {
+        addItemBtn.addEventListener("click", () => addLineItemRow({}, true));
+    }
+
+    if (lineItemsBody) {
+        lineItemsBody.addEventListener("click", (event) => {
+            if (event.target.closest(".remove-item-btn")) {
+                event.target.closest("tr").remove();
+            }
+        });
+        lineItemsBody.addEventListener("change", (event) => {
+            if (event.target.classList.contains("item-quantity") || event.target.classList.contains("item-margin-percent")) {
+                updateAndDisplayItemPrice(event.target.closest("tr"));
+            }
+        });
+    }
+
+    if (globalMarginInput) {
+        globalMarginInput.addEventListener("change", recalculateAllPrices);
+    }
+
+    if (offerListContainer) { // Event delegation for buttons in the list
+        offerListContainer.addEventListener("click", (event) => {
+            const editButton = event.target.closest(".edit-offer-btn");
+            const deleteButton = event.target.closest(".delete-offer-btn");
+            const pdfButton = event.target.closest(".pdf-offer-btn");
+            const csvButton = event.target.closest(".csv-offer-btn");
+
+            if (editButton) {
+                const offerId = editButton.dataset.id;
+                loadOfferForEditing(offerId);
+            }
+            if (deleteButton) {
+                const offerId = deleteButton.dataset.id;
+                deleteOffer(offerId);
+            }
+            if (pdfButton) {
+                const offerId = pdfButton.dataset.id;
+                window.open(`/api/offers/${offerId}/pdf`, "_blank");
+            }
+            if (csvButton) {
+                const offerId = csvButton.dataset.id;
+                window.location.href = `/api/offers/${offerId}/csv`;
+            }
+        });
+    }
+
+    // New button on list page to show create form
+    if (showCreateOfferFormBtn) {
+        showCreateOfferFormBtn.addEventListener("click", () => {
+            showOfferForm(null); // Pass null to indicate a new offer
+        });
+    }
+
+    // Cancel button in the form
+    if (cancelOfferBtn) {
+        cancelOfferBtn.addEventListener("click", () => {
+            showOfferList();
+        });
+    }
+
+    if (bulkAddBtn) {
+        bulkAddBtn.addEventListener("click", handleBulkAdd);
+    }
+
+    // --- Initial Load ---
+    if (!checkAuth()) return; // Stop if not authenticated
+    
+    // Check for #new hash in URL on page load
+    if (window.location.hash === "#new") {
+        showOfferForm(null); // Show new offer form
     } else {
-        // Redirects in checkAuth
+        showOfferList(); // Default to showing the list
     }
 });
 
