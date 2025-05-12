@@ -3,6 +3,44 @@ const Offer = require("../models/offerModel");
 const Client = require("../models/clientModel");
 const Product = require("../models/productModel");
 const CustomerPriceList = require("../models/customerPriceListModel");
+const axios = require("axios"); // Added for API calls
+
+// Helper function for live exchange rates
+const getExchangeRate = async (fromCurrency, toCurrency) => {
+    if (fromCurrency === toCurrency) return 1;
+
+    const apiKey = process.env.EXCHANGE_RATE_API_KEY;
+    if (!apiKey) {
+        console.error("ERROR: EXCHANGE_RATE_API_KEY environment variable not set.");
+        // Fallback to placeholder or throw error, for now, using placeholder
+        if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
+        if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
+        console.warn(`Exchange rate API key not found. Using placeholder for ${fromCurrency} to ${toCurrency}.`);
+        return 1;
+    }
+
+    const apiUrl = `https://v6.exchangerate-api.com/v6/${apiKey}/pair/${fromCurrency}/${toCurrency}`;
+
+    try {
+        const response = await axios.get(apiUrl);
+        if (response.data && response.data.result === "success" && response.data.conversion_rate) {
+            console.log(`Live rate fetched for ${fromCurrency} to ${toCurrency}: ${response.data.conversion_rate}`);
+            return response.data.conversion_rate;
+        } else {
+            console.error(`Error fetching live rate for ${fromCurrency} to ${toCurrency}: API response unsuccessful or malformed.`, response.data);
+            // Fallback to placeholder on API error
+            if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
+            if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
+            return 1;
+        }
+    } catch (error) {
+        console.error(`Error calling exchange rate API for ${fromCurrency} to ${toCurrency}:`, error.message);
+        // Fallback to placeholder on network/request error
+        if (fromCurrency === "GBP" && toCurrency === "USD") return 1.25;
+        if (fromCurrency === "EUR" && toCurrency === "USD") return 1.10;
+        return 1;
+    }
+};
 
 // @desc    Create new offer
 // @route   POST /api/offers
@@ -34,10 +72,18 @@ const createOffer = asyncHandler(async (req, res) => {
     const processedLineItems = [];
 
     for (let itemData of lineItems) {
-        const productDetails = await Product.findById(itemData.productId);
+        if (!itemData.productId && !(itemData.isManual === true)) {
+            console.warn(`Skipping line item due to missing productId and not being manual: ${JSON.stringify(itemData)}`);
+            continue;
+        }
 
-        if (!productDetails) {
-            console.error(`Product not found for ID: ${itemData.productId}`);
+        let productDetails = null;
+        if (itemData.productId) {
+             productDetails = await Product.findById(itemData.productId);
+        }
+       
+        if (!productDetails && !(itemData.isManual === true)) {
+            console.error(`Product not found for ID: ${itemData.productId}. Skipping item.`);
             continue;
         }
 
@@ -46,59 +92,92 @@ const createOffer = asyncHandler(async (req, res) => {
         let basePriceUSDForMargin = 0;
         const pricingMethod = itemData.pricingMethod || "Margin";
 
-        // Priority 1: Price List
-        if (pricingMethod === "PriceList" && customerPriceList) {
-            const priceListItem = customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo);
-            if (priceListItem) {
-                sourceBasePrice = priceListItem.price;
-                sourceCurrency = priceListItem.currency || "USD";
-                basePriceUSDForMargin = sourceBasePrice * (sourceCurrency !== "USD" ? 1.03 : 1);
+        if (itemData.isManual === true) {
+            sourceBasePrice = itemData.basePrice || 0;
+            sourceCurrency = itemData.baseCurrency || "USD";
+            const rate = await getExchangeRate(sourceCurrency, "USD");
+            basePriceUSDForMargin = sourceBasePrice * rate;
+            if (sourceCurrency !== "USD") {
+                basePriceUSDForMargin *= 1.03; // Apply 3% currency protection
             }
-        }
-
-        // Priority 2: Product base price
-        if (!sourceBasePrice && productDetails.basePrice > 0) {
-            sourceBasePrice = productDetails.basePrice;
-            sourceCurrency = productDetails.baseCurrency || "USD";
-            basePriceUSDForMargin = sourceBasePrice * (sourceCurrency !== "USD" ? 1.03 : 1);
-        }
-
-        // Priority 3: Supplier offers
-        if (!sourceBasePrice && productDetails.supplierOffers?.length > 0) {
-            let lowestSupplierPrice = Infinity;
-            let tempSourceBasePrice = 0;
-            let tempSourceCurrency = "USD";
-
-            for (const supOffer of productDetails.supplierOffers) {
-                if (supOffer.originalPrice < lowestSupplierPrice) {
-                    lowestSupplierPrice = supOffer.originalPrice;
-                    tempSourceBasePrice = supOffer.originalPrice;
-                    tempSourceCurrency = supOffer.originalCurrency || "USD";
+        } else if (productDetails) {
+            // Priority 1: Price List
+            if (pricingMethod === "PriceList" && customerPriceList) {
+                const priceListItem = customerPriceList.items.find(plItem => plItem.itemNo === productDetails.itemNo);
+                if (priceListItem) {
+                    sourceBasePrice = priceListItem.price;
+                    sourceCurrency = priceListItem.currency || "USD";
+                    const rate = await getExchangeRate(sourceCurrency, "USD");
+                    basePriceUSDForMargin = sourceBasePrice * rate;
+                    if (sourceCurrency !== "USD") {
+                        basePriceUSDForMargin *= 1.03; // Apply 3% currency protection
+                    }
                 }
             }
 
-            if (lowestSupplierPrice !== Infinity) {
-                sourceBasePrice = tempSourceBasePrice;
-                sourceCurrency = tempSourceCurrency;
-                basePriceUSDForMargin = sourceBasePrice * (sourceCurrency !== "USD" ? 1.03 : 1);
+            // Priority 2: Product base price
+            if (basePriceUSDForMargin === 0 && productDetails.basePrice && productDetails.basePrice > 0) {
+                sourceBasePrice = productDetails.basePrice;
+                sourceCurrency = productDetails.baseCurrency || "USD";
+                const rate = await getExchangeRate(sourceCurrency, "USD");
+                basePriceUSDForMargin = sourceBasePrice * rate;
+                if (sourceCurrency !== "USD") {
+                    basePriceUSDForMargin *= 1.03; // Apply 3% currency protection
+                }
+            }
+
+            // Priority 3: Supplier offers
+            if (basePriceUSDForMargin === 0 && productDetails.supplierOffers?.length > 0) {
+                let lowestSupplierPriceUSDWithProtection = Infinity;
+                let tempSourceBasePrice = 0;
+                let tempSourceCurrency = "USD";
+
+                for (const supOffer of productDetails.supplierOffers) {
+                    if (supOffer.originalPrice && supOffer.originalCurrency) {
+                        const supplierRate = await getExchangeRate(supOffer.originalCurrency, "USD");
+                        let supplierPriceInUSD = supOffer.originalPrice * supplierRate;
+                        if (supOffer.originalCurrency !== "USD") {
+                            supplierPriceInUSD *= 1.03; // 3% currency protection
+                        }
+                        if (supplierPriceInUSD < lowestSupplierPriceUSDWithProtection) {
+                            lowestSupplierPriceUSDWithProtection = supplierPriceInUSD;
+                            tempSourceBasePrice = supOffer.originalPrice;
+                            tempSourceCurrency = supOffer.originalCurrency;
+                        }
+                    }
+                }
+
+                if (lowestSupplierPriceUSDWithProtection !== Infinity) {
+                    sourceBasePrice = tempSourceBasePrice;
+                    sourceCurrency = tempSourceCurrency;
+                    basePriceUSDForMargin = lowestSupplierPriceUSDWithProtection; 
+                }
             }
         }
 
-        let finalPriceUSD = basePriceUSDForMargin * (1 + ((itemData.marginPercent ?? globalMarginPercent ?? 0) / 100));
+        let finalPriceUSD = basePriceUSDForMargin;
+        if (pricingMethod === "Margin" || itemData.isManual === true) {
+             const marginToApply = (itemData.marginPercent !== null && itemData.marginPercent !== undefined) 
+                                ? itemData.marginPercent 
+                                : (globalMarginPercent !== null && globalMarginPercent !== undefined ? globalMarginPercent : 0);
+            finalPriceUSD = basePriceUSDForMargin * (1 + (marginToApply / 100));
+        }
+       
         let lineTotalUSD = finalPriceUSD * (itemData.quantity || 1);
 
         processedLineItems.push({
-            productId: productDetails._id,
-            itemNo: productDetails.itemNo,
-            description: productDetails.description,
-            manufacturer: productDetails.manufacturer,
+            isManual: itemData.isManual === true,
+            productId: productDetails ? productDetails._id : null,
+            itemNo: itemData.isManual ? itemData.itemNo : (productDetails ? productDetails.itemNo : "N/A"),
+            description: itemData.isManual ? itemData.description : (productDetails ? productDetails.description : "N/A"),
+            manufacturer: itemData.isManual ? itemData.manufacturer : (productDetails ? productDetails.manufacturer : "N/A"),
             quantity: itemData.quantity || 1,
-            marginPercent: itemData.marginPercent ?? null,
+            marginPercent: (itemData.marginPercent !== null && itemData.marginPercent !== undefined) ? itemData.marginPercent : null,
             pricingMethod: itemData.pricingMethod || "Margin",
             basePrice: sourceBasePrice,
             baseCurrency: sourceCurrency,
-            finalPriceUSD,
-            lineTotalUSD
+            finalPriceUSD: parseFloat(finalPriceUSD.toFixed(2)),
+            lineTotalUSD: parseFloat(lineTotalUSD.toFixed(2))
         });
     }
 
@@ -109,9 +188,9 @@ const createOffer = asyncHandler(async (req, res) => {
         validityDate,
         terms,
         status,
-        globalMarginPercent,
+        globalMarginPercent: (globalMarginPercent !== null && globalMarginPercent !== undefined) ? globalMarginPercent : 0,
         lineItems: processedLineItems,
-        user: req.user._id
+        user: req.user._id 
     });
 
     const createdOffer = await newOffer.save();
