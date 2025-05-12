@@ -1,8 +1,8 @@
-// offers_v23.js
-// Updates client dropdown to use displayName virtual property from Client model.
+// offers_v24.js
+// Fixes bulk add by sending 'partNumbers' instead of 'itemNumbers' to the backend.
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v23): DOMContentLoaded event fired");
+    console.log("DEBUG (v24): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseData = await response.json();
-            console.log("DEBUG (v23): Raw response from /api/offers:", responseData);
+            console.log("DEBUG (v24): Raw response from /api/offers:", responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error fetching offers: ${error.message}`);
-            console.error("DEBUG (v23): Error in loadOffers:", error);
+            console.error("DEBUG (v24): Error in loadOffers:", error);
             if (offerListContainer) {
                 offerListContainer.innerHTML = `<p class="text-center text-danger">Error loading offers: ${error.message}</p>`;
             }
@@ -168,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function displayOffers(offersData) {
         if (!offerListContainer) {
-            console.error("DEBUG (v23): offerListContainer element not found!");
+            console.error("DEBUG (v24): offerListContainer element not found!");
             return;
         }
         offerListContainer.innerHTML = ""; 
@@ -199,7 +199,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const tbody = table.createTBody();
         offers.forEach(offer => {
             const row = tbody.insertRow();
-            // Use displayName from the populated client object if available
             const clientNameToDisplay = (offer.client && offer.client.displayName) 
                                       ? offer.client.displayName 
                                       : (offer.client && (offer.client.companyName || offer.client.clientName)) 
@@ -235,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseData = await response.json();
-            console.log(`DEBUG (v23): Raw response from /api/offers/${offerId}:`, responseData);
+            console.log(`DEBUG (v24): Raw response from /api/offers/${offerId}:`, responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || `HTTP error! status: ${response.status} - ${response.statusText}`);
@@ -244,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error loading offer for editing: ${error.message}`);
-            console.error("DEBUG (v23): Error in loadOfferForEditing:", error);
+            console.error("DEBUG (v24): Error in loadOfferForEditing:", error);
         }
     }
 
@@ -265,7 +264,6 @@ document.addEventListener("DOMContentLoaded", () => {
             actualClients.forEach(client => {
                 const option = document.createElement("option");
                 option.value = client._id;
-                // MODIFIED: Prioritize displayName, then companyName, then clientName
                 option.textContent = client.displayName || client.companyName || client.clientName || "Unnamed Client (".concat(client._id.slice(-4), ")");
                 if (client._id === selectedClientId) {
                     option.selected = true;
@@ -273,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 clientSelect.appendChild(option);
             });
         } catch (error) {
-            console.error("DEBUG (v23): Error populating client dropdown:", error);
+            console.error("DEBUG (v24): Error populating client dropdown:", error);
             showError("Could not load clients for dropdown.");
         }
     }
@@ -296,7 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 bulkAddManufacturerSelect.appendChild(option);
             });
         } catch (error) {
-            console.error("DEBUG (v23): Error populating manufacturer dropdown:", error);
+            console.error("DEBUG (v24): Error populating manufacturer dropdown:", error);
         }
     }
     
@@ -421,7 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error saving offer: ${error.message}`);
-            console.error("DEBUG (v23): Error in saveOffer:", error);
+            console.error("DEBUG (v24): Error in saveOffer:", error);
         }
     }
 
@@ -445,7 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error deleting offer: ${error.message}`);
-            console.error("DEBUG (v23): Error in deleteOffer:", error);
+            console.error("DEBUG (v24): Error in deleteOffer:", error);
         }
     }
 
@@ -464,8 +462,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const partNumbers = partNumbersText.split(/[,\n\s]+/).map(pn => pn.trim()).filter(pn => pn);
-        if (partNumbers.length === 0) {
+        const partNumbersArray = partNumbersText.split(/[,\n\s]+/).map(pn => pn.trim()).filter(pn => pn);
+        if (partNumbersArray.length === 0) {
             showBulkAddStatus("No valid part numbers entered.", true);
             return;
         }
@@ -480,37 +478,51 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ manufacturer, itemNumbers: partNumbers })
+                // CORRECTED KEY: partNumbers instead of itemNumbers
+                body: JSON.stringify({ manufacturer, partNumbers: partNumbersArray })
             });
             showLoading(false);
-            const products = await response.json();
+            const productsData = await response.json(); // Renamed to avoid conflict
 
             if (!response.ok) {
-                throw new Error(products.message || "Error fetching products for bulk add.");
+                // Use message from productsData if available, otherwise a generic error
+                throw new Error(productsData.message || "Error fetching products for bulk add.");
             }
 
             let itemsAddedCount = 0;
             let itemsNotFound = [];
-            products.forEach(product => {
-                if (product && product._id) { 
-                    const itemData = {
-                        productId: product._id,
-                        itemNo: product.itemNo,
-                        manufacturer: product.manufacturer,
-                        description: product.description,
-                        quantity: 1, 
-                        basePrice: product.basePrice, 
-                        baseCurrency: product.baseCurrency,
-                        basePriceUSDForMargin: product.basePriceUSD, 
-                        finalPriceUSD: 0, 
-                        lineTotalUSD: 0   
-                    };
-                    addLineItemRow(itemData, false);
-                    itemsAddedCount++;
-                } else if (product && product.itemNo && !product._id) { 
-                    itemsNotFound.push(product.itemNo);
-                }
-            });
+            // Ensure productsData is an array before calling forEach
+            if (Array.isArray(productsData)) {
+                productsData.forEach(product => {
+                    // Check if product is an object and has an _id (found) or just itemNo (not found structure)
+                    if (product && product.data && product.data._id) { // Product found, data is in product.data
+                        const itemData = {
+                            productId: product.data._id,
+                            itemNo: product.data.itemNo,
+                            manufacturer: product.data.manufacturer,
+                            description: product.data.description,
+                            quantity: 1, 
+                            basePrice: product.data.basePrice, 
+                            baseCurrency: product.data.baseCurrency,
+                            basePriceUSDForMargin: product.data.basePriceUSD, 
+                            finalPriceUSD: 0, 
+                            lineTotalUSD: 0   
+                        };
+                        addLineItemRow(itemData, false);
+                        itemsAddedCount++;
+                    } else if (product && product.itemNumber && !product.found) { // Product not found by backend
+                        itemsNotFound.push(product.itemNumber);
+                    }
+                });
+            } else {
+                 // Handle cases where productsData might not be an array (e.g. error object)
+                 console.error("DEBUG (v24): productsData is not an array:", productsData);
+                 if(productsData.message) {
+                    throw new Error(productsData.message);
+                 } else {
+                    throw new Error("Unexpected response format from bulk add API.");
+                 }
+            }
             
             let statusMessage = `${itemsAddedCount} item(s) added.`;
             if (itemsNotFound.length > 0) {
@@ -522,7 +534,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showBulkAddStatus(`Error during bulk add: ${error.message}`, true);
-            console.error("DEBUG (v23): Error in handleBulkAdd:", error);
+            console.error("DEBUG (v24): Error in handleBulkAdd:", error);
         }
     }
 
