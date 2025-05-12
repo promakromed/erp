@@ -2,23 +2,20 @@ const express = require("express");
 const router = express.Router();
 
 const { protect, admin } = require("../middleware/authMiddleware");
-const {
-    getClients,
-    getClientById,
-    createClient,
-    updateClient,
-    deleteClient
-} = require("../controllers/clientController");
+// Import getOffers, createOffer, and the new getOfferById
+const { createOffer, getOffers, getOfferById } = require("../controllers/offerController"); // Assuming the controller file is named offerController.js
 
-// @desc    GET all clients or CREATE new one
-router.route("/")
-    .get(protect, getClients)
-    .post(protect, admin, createClient);
+// @desc    Create new offer
+// @route   POST /api/offers
+router.route("/").post(protect, admin, createOffer);
 
-// @desc    GET / UPDATE / DELETE single client
-router.route("/:id")
-    .get(protect, getClientById)
-    .put(protect, admin, updateClient)
-    .delete(protect, admin, deleteClient);
+// @desc    GET all offers
+// @route   GET /api/offers
+router.route("/").get(protect, getOffers);
+
+// @desc    GET single offer by ID
+// @route   GET /api/offers/:id
+router.route("/:id").get(protect, getOfferById); // Added route for getting a single offer
 
 module.exports = router;
+
