@@ -1,8 +1,9 @@
-// offers_v25.js
+// offers_v26.js
+// Fixes part number parsing in bulk add.
 // Implements multi-supplier price selection modal and global margin with individual override.
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v25): DOMContentLoaded event fired");
+    console.log("DEBUG (v26): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -153,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseData = await response.json();
-            console.log("DEBUG (v25): Raw response from /api/offers:", responseData);
+            console.log("DEBUG (v26): Raw response from /api/offers:", responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
@@ -162,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error fetching offers: ${error.message}`);
-            console.error("DEBUG (v25): Error in loadOffers:", error);
+            console.error("DEBUG (v26): Error in loadOffers:", error);
             if (offerListContainer) {
                 offerListContainer.innerHTML = `<p class="text-center text-danger">Error loading offers: ${error.message}</p>`;
             }
@@ -171,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function displayOffers(offersData) {
         if (!offerListContainer) {
-            console.error("DEBUG (v25): offerListContainer element not found!");
+            console.error("DEBUG (v26): offerListContainer element not found!");
             return;
         }
         offerListContainer.innerHTML = ""; 
@@ -237,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseData = await response.json();
-            console.log(`DEBUG (v25): Raw response from /api/offers/${offerId}:`, responseData);
+            console.log(`DEBUG (v26): Raw response from /api/offers/${offerId}:`, responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || `HTTP error! status: ${response.status} - ${response.statusText}`);
@@ -246,7 +247,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error loading offer for editing: ${error.message}`);
-            console.error("DEBUG (v25): Error in loadOfferForEditing:", error);
+            console.error("DEBUG (v26): Error in loadOfferForEditing:", error);
         }
     }
 
@@ -274,7 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 clientSelect.appendChild(option);
             });
         } catch (error) {
-            console.error("DEBUG (v25): Error populating client dropdown:", error);
+            console.error("DEBUG (v26): Error populating client dropdown:", error);
             showError("Could not load clients for dropdown.");
         }
     }
@@ -297,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 bulkAddManufacturerSelect.appendChild(option);
             });
         } catch (error) {
-            console.error("DEBUG (v25): Error populating manufacturer dropdown:", error);
+            console.error("DEBUG (v26): Error populating manufacturer dropdown:", error);
         }
     }
     
@@ -343,108 +344,325 @@ document.addEventListener("DOMContentLoaded", () => {
     function addLineItemRow(itemData = {}, isManualEntry = false) {
         if (!lineItemsBody) return;
         const newRow = lineItemsBody.insertRow();
-        newRow.dataset.isManual = isManualEntry.toString();
-        newRow.dataset.productId = itemData.productId || (itemData.product?._id || "");
-        
-        // For bulk-added items, basePriceForMargin will be set after supplier selection
-        // For manually added or loaded items, it might come from itemData
-        let basePriceForMarginCalc = itemData.basePriceForMargin || itemData.basePriceUSDForMarginApplication || itemData.basePriceUSDForMargin || itemData.basePrice || 0;
-        newRow.dataset.basePriceForMargin = basePriceForMarginCalc.toString();
+        newRow.className = "line-item-row";
 
-        // If it's a bulk-added item, use the bulkAddGlobalMargin for initial display
-        // Otherwise, use itemData.marginPercent or fallback to offer-level globalMarginInput
-        let initialMarginPercent = "";
-        if (itemData.source === "bulk-add" && bulkAddGlobalMargin !== null) {
-            initialMarginPercent = bulkAddGlobalMargin;
-        } else if (itemData.marginPercent !== undefined && itemData.marginPercent !== null) {
-            initialMarginPercent = itemData.marginPercent;
-        } 
-        // If still no margin, it will default to using the offer-level global margin in updateAndDisplayItemPrice
+        const itemNumber = itemData.itemNo || itemData.partNumber || "";
+        const description = itemData.description || "";
+        const quantity = itemData.quantity || 1;
+        const basePriceForMargin = parseFloat(itemData.basePriceForMargin) || 0; // This will be set after supplier selection
+        const marginPercent = itemData.marginPercent !== undefined ? itemData.marginPercent : (bulkAddGlobalMargin !== null ? bulkAddGlobalMargin : (parseFloat(globalMarginInput?.value) || 0));
+        const unitPrice = basePriceForMargin * (1 + marginPercent / 100);
+        const lineTotal = unitPrice * quantity;
+
+        newRow.dataset.basePriceForMargin = basePriceForMargin.toFixed(4); // Store with precision
+        newRow.dataset.isManual = isManualEntry.toString();
+        newRow.dataset.productId = itemData.productId || itemData._id || ""; // Store product ID if available
 
         newRow.innerHTML = `
-            <td><input type="text" class="form-control item-number" value="${itemData.itemNo || itemData.partNumber || ""}" ${!isManualEntry && (itemData.itemNo || itemData.partNumber) ? "readonly" : ""}></td>
-            <td><input type="text" class="form-control item-manufacturer" value="${itemData.manufacturer || ""}" ${!isManualEntry && itemData.manufacturer ? "readonly" : ""}></td>
-            <td><input type="text" class="form-control item-description" value="${itemData.description || ""}" ${!isManualEntry && itemData.description ? "readonly" : ""}></td>
-            <td><input type="number" class="form-control item-quantity" value="${itemData.quantity || 1}" min="1"></td>
-            <td><input type="text" class="form-control item-margin-percent" value="${initialMarginPercent}" placeholder="Global"></td>
-            <td class="unit-price-display">0.00</td>
-            <td class="line-total-display">0.00</td>
-            <td><button class="btn btn-sm btn-danger remove-item-btn"><i class="fas fa-times"></i></button></td>
+            <td><input type="text" class="form-control item-number" value="${itemNumber}" ${isManualEntry ? "" : "readonly"}></td>
+            <td><input type="text" class="form-control item-description" value="${description}" ${isManualEntry ? "" : "readonly"}></td>
+            <td><input type="number" class="form-control item-quantity" value="${quantity}" min="1"></td>
+            <td><input type="number" class="form-control item-margin-percent" value="${marginPercent.toFixed(2)}" step="0.01"></td>
+            <td class="unit-price-display">${unitPrice.toFixed(2)}</td>
+            <td class="line-total-display">${lineTotal.toFixed(2)}</td>
+            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn"><i class="fas fa-times"></i></button></td>
         `;
 
-        updateAndDisplayItemPrice(newRow);
+        const quantityInput = newRow.querySelector(".item-quantity");
+        const marginInput = newRow.querySelector(".item-margin-percent");
 
-        newRow.querySelector(".item-quantity").addEventListener("change", () => updateAndDisplayItemPrice(newRow));
-        newRow.querySelector(".item-margin-percent").addEventListener("change", () => updateAndDisplayItemPrice(newRow));
-        newRow.querySelector(".remove-item-btn").addEventListener("click", () => newRow.remove());
+        quantityInput.addEventListener("change", () => updateAndDisplayItemPrice(newRow));
+        marginInput.addEventListener("change", () => updateAndDisplayItemPrice(newRow));
         
-        // For manual entries, allow editing of number, manufacturer, description
-        if (isManualEntry) {
-            newRow.querySelector(".item-number").readOnly = false;
-            newRow.querySelector(".item-manufacturer").readOnly = false;
-            newRow.querySelector(".item-description").readOnly = false;
-            // For manual entries, base price is typically entered by user or fetched differently
-            // We might need a field for base price input for truly manual items if not product-linked
-            const basePriceInput = document.createElement("input");
-            basePriceInput.type = "number";
-            basePriceInput.className = "form-control item-base-price-manual";
-            basePriceInput.placeholder = "Base Price (USD)";
-            basePriceInput.value = basePriceForMarginCalc > 0 ? basePriceForMarginCalc : "";
-            basePriceInput.addEventListener("change", (e) => {
-                newRow.dataset.basePriceForMargin = parseFloat(e.target.value) || 0;
-                updateAndDisplayItemPrice(newRow);
-            });
-            const tdBasePrice = document.createElement("td");
-            tdBasePrice.appendChild(basePriceInput);
-            // Insert this before the margin column, adjust column spans or add new header if needed
-            // For now, this is just a conceptual addition for manual price setting
-        }
-        return newRow;
+        // Initial calculation for display
+        updateAndDisplayItemPrice(newRow);
     }
 
-    // --- MODAL CREATION AND HANDLING ---
-    function createModal(id, title, bodyContentHtml, footerButtons = []) {
-        // Remove existing modal with the same id to prevent duplicates
+    // --- Event Listeners ---
+    if (showCreateOfferFormBtn) {
+        showCreateOfferFormBtn.addEventListener("click", () => showOfferForm());
+    }
+
+    if (offerForm) {
+        offerForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!checkAuth()) return;
+            const token = getAuthToken();
+            showLoading(true);
+            showError("");
+
+            const lineItems = [];
+            const rows = lineItemsBody.querySelectorAll("tr.line-item-row");
+            rows.forEach(row => {
+                const itemNumberInput = row.querySelector(".item-number");
+                const descriptionInput = row.querySelector(".item-description");
+                const quantityInput = row.querySelector(".item-quantity");
+                const marginInput = row.querySelector(".item-margin-percent");
+                
+                lineItems.push({
+                    itemNo: itemNumberInput.value,
+                    description: descriptionInput.value,
+                    quantity: parseInt(quantityInput.value),
+                    marginPercent: parseFloat(marginInput.value),
+                    basePriceForMargin: parseFloat(row.dataset.basePriceForMargin) || 0,
+                    isManual: row.dataset.isManual === "true",
+                    productId: row.dataset.productId || null
+                });
+            });
+
+            const offerData = {
+                client: clientSelect.value,
+                validityDate: validityInput.value,
+                terms: termsInput.value,
+                status: statusSelect.value,
+                globalMarginPercent: parseFloat(globalMarginInput.value) || 0,
+                lineItems: lineItems
+            };
+
+            const method = currentOfferId ? "PUT" : "POST";
+            const url = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify(offerData)
+                });
+                showLoading(false);
+                const responseData = await response.json();
+                if (!response.ok) {
+                    throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
+                }
+                alert(`Offer ${currentOfferId ? "updated" : "created"} successfully!`);
+                showOfferList();
+            } catch (error) {
+                showLoading(false);
+                showError(`Error saving offer: ${error.message}`);
+                console.error("DEBUG (v26): Error saving offer:", error);
+            }
+        });
+    }
+
+    if (cancelOfferBtn) {
+        cancelOfferBtn.addEventListener("click", () => showOfferList());
+    }
+
+    if (deleteOfferBtn) {
+        deleteOfferBtn.addEventListener("click", async () => {
+            if (!currentOfferId || !confirm("Are you sure you want to delete this offer?")) return;
+            if (!checkAuth()) return;
+            const token = getAuthToken();
+            showLoading(true);
+            showError("");
+            try {
+                const response = await fetch(`/api/offers/${currentOfferId}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                showLoading(false);
+                if (!response.ok) {
+                    const responseData = await response.json();
+                    throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
+                }
+                alert("Offer deleted successfully!");
+                showOfferList();
+            } catch (error) {
+                showLoading(false);
+                showError(`Error deleting offer: ${error.message}`);
+                console.error("DEBUG (v26): Error deleting offer:", error);
+            }
+        });
+    }
+
+    if (addItemBtn) {
+        addItemBtn.addEventListener("click", () => addLineItemRow({}, true)); // Add a manual, empty row
+    }
+
+    if (lineItemsBody) {
+        lineItemsBody.addEventListener("click", (e) => {
+            if (e.target.closest(".remove-item-btn")) {
+                e.target.closest("tr.line-item-row").remove();
+            }
+        });
+    }
+
+    if (offerListContainer) {
+        offerListContainer.addEventListener("click", (e) => {
+            const editButton = e.target.closest(".edit-offer-btn");
+            const deleteButton = e.target.closest(".delete-offer-btn");
+            const pdfButton = e.target.closest(".pdf-offer-btn");
+            const csvButton = e.target.closest(".csv-offer-btn");
+
+            if (editButton) {
+                const offerId = editButton.dataset.id;
+                loadOfferForEditing(offerId);
+            } else if (deleteButton) {
+                const offerId = deleteButton.dataset.id;
+                // This delete is for the list view, might need a separate handler or reuse logic
+                if (confirm("Are you sure you want to delete this offer from the list?")) {
+                    currentOfferId = offerId; // Set it for the delete function
+                    deleteOfferBtn.click(); // Trigger the form's delete logic
+                }
+            } else if (pdfButton) {
+                const offerId = pdfButton.dataset.id;
+                window.open(`/api/offers/${offerId}/pdf`, "_blank");
+            } else if (csvButton) {
+                const offerId = csvButton.dataset.id;
+                window.open(`/api/offers/${offerId}/csv`, "_blank");
+            }
+        });
+    }
+
+    if (logoutButton) {
+        logoutButton.addEventListener("click", () => {
+            localStorage.removeItem("userInfo");
+            window.location.href = "/login.html";
+        });
+    }
+
+    // --- Bulk Add Functionality ---
+    async function handleBulkAdd() {
+        if (!checkAuth()) return;
+        const token = getAuthToken();
+        const manufacturer = bulkAddManufacturerSelect.value;
+        const partNumbersRaw = bulkAddPartNumbersTextarea.value;
+
+        if (!manufacturer) {
+            showBulkAddStatus("Please select a manufacturer.", true);
+            return;
+        }
+        if (!partNumbersRaw.trim()) {
+            showBulkAddStatus("Please enter part numbers.", true);
+            return;
+        }
+
+        // **FIXED PART NUMBER PARSING HERE**
+        const partNumbers = partNumbersRaw
+            .split(/\r?\n/)
+            .map(pn => pn.trim())
+            .filter(pn => pn !== "");
+
+        if (partNumbers.length === 0) {
+            showBulkAddStatus("No valid part numbers entered after trimming.", true);
+            return;
+        }
+
+        showLoading(true);
+        showBulkAddStatus("Processing...", false);
+
+        try {
+            // 1. Prompt for Global Margin for this bulk add operation
+            const globalMarginForBulk = await promptForGlobalMargin();
+            bulkAddGlobalMargin = globalMarginForBulk; // Store for use in addLineItemRow
+
+            const response = await fetch("/api/products/bulk-by-manufacturer", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ manufacturer, partNumbers })
+            });
+
+            showLoading(false);
+            const results = await response.json();
+
+            if (!response.ok) {
+                throw new Error(results.message || `Error fetching bulk products: ${response.status}`);
+            }
+
+            let itemsAddedCount = 0;
+            for (const productInfo of results) {
+                if (productInfo.found && productInfo.suppliers && productInfo.suppliers.length > 0) {
+                    let selectedSupplierPrice = null;
+                    if (productInfo.suppliers.length === 1) {
+                        selectedSupplierPrice = productInfo.suppliers[0].usdPriceWithProtection;
+                    } else {
+                        // Multiple suppliers, prompt user
+                        const chosenSupplier = await promptForSupplierSelection(productInfo.partNumber, productInfo.suppliers);
+                        if (chosenSupplier) {
+                            selectedSupplierPrice = chosenSupplier.usdPriceWithProtection;
+                        }
+                    }
+
+                    if (selectedSupplierPrice !== null) {
+                        const lineItemData = {
+                            partNumber: productInfo.partNumber,
+                            description: productInfo.description || "", // Assuming backend might send description
+                            quantity: 1, // Default quantity
+                            basePriceForMargin: selectedSupplierPrice,
+                            marginPercent: bulkAddGlobalMargin, // Apply the bulk-add global margin
+                            productId: productInfo.productId || null // Assuming backend might send product ID
+                        };
+                        addLineItemRow(lineItemData, false); // false for not manual entry
+                        itemsAddedCount++;
+                    }
+                } else {
+                    console.warn(`DEBUG (v26): Part number ${productInfo.partNumber} not found or no suppliers.`);
+                }
+            }
+
+            if (itemsAddedCount > 0) {
+                showBulkAddStatus(`${itemsAddedCount} item(s) added. You can adjust individual margins below.`, false);
+            } else {
+                showBulkAddStatus("0 items added. Check part numbers or supplier availability.", true);
+            }
+            bulkAddPartNumbersTextarea.value = ""; // Clear textarea
+
+        } catch (error) {
+            showLoading(false);
+            showBulkAddStatus(`Error during bulk add: ${error.message}`, true);
+            console.error("DEBUG (v26): Error in handleBulkAdd:", error);
+        }
+        bulkAddGlobalMargin = null; // Reset after operation
+    }
+
+    if (bulkAddBtn) {
+        bulkAddBtn.addEventListener("click", handleBulkAdd);
+    }
+
+    // --- Modal Creation Helper (using Bootstrap's JS for modals) ---
+    function createModal(id, title, bodyHtml, footerButtons = []) {
+        // Remove existing modal if any
         const existingModal = document.getElementById(id);
         if (existingModal) existingModal.remove();
 
-        const modalElement = document.createElement("div");
-        modalElement.className = "modal fade";
-        modalElement.id = id;
-        modalElement.tabIndex = -1;
-        modalElement.setAttribute("aria-labelledby", `${id}-label`);
-        modalElement.setAttribute("aria-hidden", "true");
-
-        modalElement.innerHTML = `
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="${id}-label">${title}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        ${bodyContentHtml}
-                    </div>
-                    <div class="modal-footer">
-                        ${footerButtons.map(btn => `<button type="button" class="btn ${btn.className}" id="${btn.id}">${btn.text}</button>`).join("")}
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        const modalHtml = `
+            <div class="modal fade" id="${id}" tabindex="-1" aria-labelledby="${id}Label" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="${id}Label">${title}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            ${bodyHtml}
+                        </div>
+                        <div class="modal-footer">
+                            ${footerButtons.map(btn => `<button type="button" class="btn ${btn.className}" id="${btn.id}">${btn.text}</button>`).join("")}
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
-        document.body.appendChild(modalElement);
-        return new bootstrap.Modal(modalElement);
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+        return new bootstrap.Modal(document.getElementById(id));
     }
 
+    // --- Modal Prompts for Bulk Add ---
     async function promptForGlobalMargin() {
         return new Promise((resolve) => {
             const modalId = "global-margin-prompt-modal";
             const title = "Set Global Margin for Bulk Add";
             const bodyHtml = `
-                <p>Please enter the global margin percentage to apply to the newly added items. You can override this for individual items later.</p>
+                <p>Enter the global margin percentage to apply to all newly added items. You can override this for individual items later.</p>
                 <div class="mb-3">
-                    <label for="bulk-add-global-margin-input" class="form-label">Global Margin (%):</label>
-                    <input type="number" class="form-control" id="bulk-add-global-margin-input" value="0" min="0" step="0.01">
+                    <label for="bulk-add-global-margin-input" class="form-label">Global Margin (%)</label>
+                    <input type="number" class="form-control" id="bulk-add-global-margin-input" value="0" step="0.01">
                 </div>
             `;
             const footerButtons = [
@@ -476,4 +694,64 @@ document.addEventListener("DOMContentLoaded", () => {
                             <small>Original: ${supplier.originalPrice.toFixed(2)} ${supplier.originalCurrency}</small><br>
                             <small>USD (incl. 3% protection): ${supplier.usdPriceWithProtection.toFixed(2)} USD</small>
                             ${supplier.isWinner ? 
-(Content truncated due to size limit. Use line ranges to read in chunks)
+                                
+                                `<span class="badge bg-success rounded-pill ms-2">Winner</span>` : ""}
+                        </div>
+                        <input class="form-check-input me-1" type="radio" name="supplierSelect-${partNumber}" value="${index}" ${supplier.isWinner ? "checked" : ""}>
+                    </label>
+                `;
+            });
+            bodyHtml += `</div>`;
+
+            const footerButtons = [
+                { id: `confirm-supplier-select-btn-${partNumber.replace(/[^a-zA-Z0-9]/g, "")}`, text: "Select this Supplier", className: "btn-primary" }
+            ];
+
+            const bsModal = createModal(modalId, title, bodyHtml, footerButtons);
+
+            document.getElementById(`confirm-supplier-select-btn-${partNumber.replace(/[^a-zA-Z0-9]/g, "")}`).onclick = () => {
+                const selectedRadio = document.querySelector(`input[name="supplierSelect-${partNumber}"]:checked`);
+                if (selectedRadio) {
+                    const selectedSupplier = suppliers[parseInt(selectedRadio.value)];
+                    bsModal.hide();
+                    resolve(selectedSupplier);
+                } else {
+                    alert("Please select a supplier."); // Should not happen if one is pre-checked
+                    resolve(null); // Or re-prompt, but for now resolve null
+                }
+            };
+            bsModal.show();
+        });
+    }
+
+    // --- Initialization ---
+    if (checkAuth()) {
+        if (window.location.hash === "#new") {
+            showOfferForm();
+        } else {
+            const offerIdMatch = window.location.hash.match(/^#edit\/(.+)$/);
+            if (offerIdMatch) {
+                loadOfferForEditing(offerIdMatch[1]);
+            } else {
+                showOfferList();
+            }
+        }
+    }
+
+    window.addEventListener("hashchange", () => {
+        if (checkAuth()) {
+            if (window.location.hash === "#new") {
+                showOfferForm();
+            } else {
+                const offerIdMatch = window.location.hash.match(/^#edit\/(.+)$/);
+                if (offerIdMatch) {
+                    loadOfferForEditing(offerIdMatch[1]);
+                } else if (window.location.hash === "") { // Or some other condition for list view
+                    showOfferList();
+                }
+            }
+        }
+    });
+
+});
+
