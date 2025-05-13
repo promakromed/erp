@@ -1,8 +1,8 @@
-// offers_v24.js
-// Fixes bulk add by sending 'partNumbers' instead of 'itemNumbers' to the backend.
+// offers_v25.js
+// Implements multi-supplier price selection modal and global margin with individual override.
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("DEBUG (v24): DOMContentLoaded event fired");
+    console.log("DEBUG (v25): DOMContentLoaded event fired");
 
     // --- Element References ---
     const offerListSection = document.getElementById("offer-list-section");
@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const validityInput = document.getElementById("offer-validity");
     const termsInput = document.getElementById("offer-terms");
     const statusSelect = document.getElementById("offer-status");
-    const globalMarginInput = document.getElementById("offer-global-margin");
+    const globalMarginInput = document.getElementById("offer-global-margin"); // Existing global margin for the offer itself
     
     const createOfferBtn = document.getElementById("create-offer-btn"); 
     const saveOfferBtn = document.getElementById("save-offer-btn");     
@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const bulkAddStatus = document.getElementById("bulk-add-status");
 
     let currentOfferId = null; 
+    let bulkAddGlobalMargin = null; // To store the global margin for the current bulk add operation
 
     // --- Utility Functions ---
     function checkAuth() {
@@ -103,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lineItemsBody) lineItemsBody.innerHTML = "";
         showError("");
         showBulkAddStatus("");
+        bulkAddGlobalMargin = null; // Reset for new form view
 
         if (offerToEdit) {
             currentOfferId = offerToEdit._id;
@@ -111,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (validityInput) validityInput.value = offerToEdit.validityDate ? offerToEdit.validityDate.split("T")[0] : "";
             if (termsInput) termsInput.value = offerToEdit.terms || "";
             if (statusSelect) statusSelect.value = offerToEdit.status || "Draft";
-            if (globalMarginInput) globalMarginInput.value = offerToEdit.globalMarginPercent || 0;
+            if (globalMarginInput) globalMarginInput.value = offerToEdit.globalMarginPercent || 0; // This is offer-level global margin
             
             offerToEdit.lineItems.forEach(item => addLineItemRow(item, item.isManual));
 
@@ -125,6 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else { 
             currentOfferId = null;
             if (offerIdDisplay) offerIdDisplay.textContent = "Creating New Offer";
+            if (globalMarginInput) globalMarginInput.value = 0; // Default for new offer
             
             if (createOfferBtn) createOfferBtn.classList.remove("d-none");
             if (saveOfferBtn) saveOfferBtn.classList.add("d-none");
@@ -150,7 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseData = await response.json();
-            console.log("DEBUG (v24): Raw response from /api/offers:", responseData);
+            console.log("DEBUG (v25): Raw response from /api/offers:", responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
@@ -159,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error fetching offers: ${error.message}`);
-            console.error("DEBUG (v24): Error in loadOffers:", error);
+            console.error("DEBUG (v25): Error in loadOffers:", error);
             if (offerListContainer) {
                 offerListContainer.innerHTML = `<p class="text-center text-danger">Error loading offers: ${error.message}</p>`;
             }
@@ -168,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function displayOffers(offersData) {
         if (!offerListContainer) {
-            console.error("DEBUG (v24): offerListContainer element not found!");
+            console.error("DEBUG (v25): offerListContainer element not found!");
             return;
         }
         offerListContainer.innerHTML = ""; 
@@ -234,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             showLoading(false);
             const responseData = await response.json();
-            console.log(`DEBUG (v24): Raw response from /api/offers/${offerId}:`, responseData);
+            console.log(`DEBUG (v25): Raw response from /api/offers/${offerId}:`, responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || `HTTP error! status: ${response.status} - ${response.statusText}`);
@@ -243,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             showLoading(false);
             showError(`Error loading offer for editing: ${error.message}`);
-            console.error("DEBUG (v24): Error in loadOfferForEditing:", error);
+            console.error("DEBUG (v25): Error in loadOfferForEditing:", error);
         }
     }
 
@@ -271,7 +274,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 clientSelect.appendChild(option);
             });
         } catch (error) {
-            console.error("DEBUG (v24): Error populating client dropdown:", error);
+            console.error("DEBUG (v25): Error populating client dropdown:", error);
             showError("Could not load clients for dropdown.");
         }
     }
@@ -294,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 bulkAddManufacturerSelect.appendChild(option);
             });
         } catch (error) {
-            console.error("DEBUG (v24): Error populating manufacturer dropdown:", error);
+            console.error("DEBUG (v25): Error populating manufacturer dropdown:", error);
         }
     }
     
@@ -307,10 +310,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const quantity = parseInt(quantityInput.value) || 0;
         let itemMarginPercent = marginInput?.value.trim() !== "" ? parseFloat(marginInput.value) : null;
-        let globalMarginValue = globalMarginInput?.value.trim() !== "" ? parseFloat(globalMarginInput.value) : 0;
-        if (isNaN(globalMarginValue)) globalMarginValue = 0;
+        
+        // Use offer-level global margin if item-specific margin is not set
+        let offerWideGlobalMargin = globalMarginInput?.value.trim() !== "" ? parseFloat(globalMarginInput.value) : 0;
+        if (isNaN(offerWideGlobalMargin)) offerWideGlobalMargin = 0;
 
-        let effectiveMarginPercent = itemMarginPercent ?? globalMarginValue;
+        let effectiveMarginPercent = itemMarginPercent ?? offerWideGlobalMargin;
 
         const unitPrice = basePriceForMargin * (1 + effectiveMarginPercent / 100);
         const lineTotal = unitPrice * quantity;
@@ -319,15 +324,20 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lineTotalDisplay) lineTotalDisplay.textContent = lineTotal.toFixed(2);
     }
 
-    function recalculateAllPrices() {
+    function recalculateAllPricesBasedOnOfferGlobalMargin() {
         if (!lineItemsBody) return;
         const rows = lineItemsBody.querySelectorAll("tr");
         rows.forEach(row => {
             const marginInput = row.querySelector(".item-margin-percent");
+            // Only update if the item doesn't have its own specific margin set
             if (!marginInput || marginInput.value.trim() === "") { 
                 updateAndDisplayItemPrice(row);
             }
         });
+    }
+
+    if (globalMarginInput) {
+        globalMarginInput.addEventListener("change", recalculateAllPricesBasedOnOfferGlobalMargin);
     }
 
     function addLineItemRow(itemData = {}, isManualEntry = false) {
@@ -335,291 +345,135 @@ document.addEventListener("DOMContentLoaded", () => {
         const newRow = lineItemsBody.insertRow();
         newRow.dataset.isManual = isManualEntry.toString();
         newRow.dataset.productId = itemData.productId || (itemData.product?._id || "");
-        let basePriceForMarginCalc = itemData.basePriceUSDForMarginApplication || itemData.basePriceUSDForMargin || itemData.basePrice || 0;
+        
+        // For bulk-added items, basePriceForMargin will be set after supplier selection
+        // For manually added or loaded items, it might come from itemData
+        let basePriceForMarginCalc = itemData.basePriceForMargin || itemData.basePriceUSDForMarginApplication || itemData.basePriceUSDForMargin || itemData.basePrice || 0;
         newRow.dataset.basePriceForMargin = basePriceForMarginCalc.toString();
 
+        // If it's a bulk-added item, use the bulkAddGlobalMargin for initial display
+        // Otherwise, use itemData.marginPercent or fallback to offer-level globalMarginInput
+        let initialMarginPercent = "";
+        if (itemData.source === "bulk-add" && bulkAddGlobalMargin !== null) {
+            initialMarginPercent = bulkAddGlobalMargin;
+        } else if (itemData.marginPercent !== undefined && itemData.marginPercent !== null) {
+            initialMarginPercent = itemData.marginPercent;
+        } 
+        // If still no margin, it will default to using the offer-level global margin in updateAndDisplayItemPrice
+
         newRow.innerHTML = `
-            <td><input type="text" class="form-control item-number" value="${itemData.itemNo || ""}" ${!isManualEntry && itemData.itemNo ? "readonly" : ""}></td>
+            <td><input type="text" class="form-control item-number" value="${itemData.itemNo || itemData.partNumber || ""}" ${!isManualEntry && (itemData.itemNo || itemData.partNumber) ? "readonly" : ""}></td>
             <td><input type="text" class="form-control item-manufacturer" value="${itemData.manufacturer || ""}" ${!isManualEntry && itemData.manufacturer ? "readonly" : ""}></td>
-            <td><textarea class="form-control item-description" rows="1" ${!isManualEntry && itemData.description ? "readonly" : ""}>${itemData.description || ""}</textarea></td>
+            <td><input type="text" class="form-control item-description" value="${itemData.description || ""}" ${!isManualEntry && itemData.description ? "readonly" : ""}></td>
             <td><input type="number" class="form-control item-quantity" value="${itemData.quantity || 1}" min="1"></td>
-            <td><input type="number" step="0.01" class="form-control item-margin-percent" placeholder="Global" value="${itemData.marginPercent !== null && itemData.marginPercent !== undefined ? itemData.marginPercent : ""}"></td>
-            <td class="unit-price-display">${(itemData.finalPriceUSD || 0).toFixed(2)}</td>
-            <td class="line-total-display">${(itemData.lineTotalUSD || 0).toFixed(2)}</td>
-            <td><button type="button" class="btn btn-sm btn-danger remove-item-btn"><i class="fas fa-trash-alt"></i></button></td>
+            <td><input type="text" class="form-control item-margin-percent" value="${initialMarginPercent}" placeholder="Global"></td>
+            <td class="unit-price-display">0.00</td>
+            <td class="line-total-display">0.00</td>
+            <td><button class="btn btn-sm btn-danger remove-item-btn"><i class="fas fa-times"></i></button></td>
         `;
+
         updateAndDisplayItemPrice(newRow);
+
+        newRow.querySelector(".item-quantity").addEventListener("change", () => updateAndDisplayItemPrice(newRow));
+        newRow.querySelector(".item-margin-percent").addEventListener("change", () => updateAndDisplayItemPrice(newRow));
+        newRow.querySelector(".remove-item-btn").addEventListener("click", () => newRow.remove());
+        
+        // For manual entries, allow editing of number, manufacturer, description
+        if (isManualEntry) {
+            newRow.querySelector(".item-number").readOnly = false;
+            newRow.querySelector(".item-manufacturer").readOnly = false;
+            newRow.querySelector(".item-description").readOnly = false;
+            // For manual entries, base price is typically entered by user or fetched differently
+            // We might need a field for base price input for truly manual items if not product-linked
+            const basePriceInput = document.createElement("input");
+            basePriceInput.type = "number";
+            basePriceInput.className = "form-control item-base-price-manual";
+            basePriceInput.placeholder = "Base Price (USD)";
+            basePriceInput.value = basePriceForMarginCalc > 0 ? basePriceForMarginCalc : "";
+            basePriceInput.addEventListener("change", (e) => {
+                newRow.dataset.basePriceForMargin = parseFloat(e.target.value) || 0;
+                updateAndDisplayItemPrice(newRow);
+            });
+            const tdBasePrice = document.createElement("td");
+            tdBasePrice.appendChild(basePriceInput);
+            // Insert this before the margin column, adjust column spans or add new header if needed
+            // For now, this is just a conceptual addition for manual price setting
+        }
+        return newRow;
     }
 
-    async function saveOffer(event) {
-        event.preventDefault();
-        if (!checkAuth()) return;
-        const token = getAuthToken();
+    // --- MODAL CREATION AND HANDLING ---
+    function createModal(id, title, bodyContentHtml, footerButtons = []) {
+        // Remove existing modal with the same id to prevent duplicates
+        const existingModal = document.getElementById(id);
+        if (existingModal) existingModal.remove();
 
-        const lineItemsData = [];
-        if (lineItemsBody) {
-            lineItemsBody.querySelectorAll("tr").forEach(row => {
-                const itemNumberInput = row.querySelector(".item-number");
-                const manufacturerInput = row.querySelector(".item-manufacturer");
-                const descriptionInput = row.querySelector(".item-description");
-                const quantityInput = row.querySelector(".item-quantity");
-                const marginInput = row.querySelector(".item-margin-percent");
-                
-                if (row.dataset.isManual === "true" && !itemNumberInput.value.trim() && !descriptionInput.value.trim()) {
-                    return; 
-                }
+        const modalElement = document.createElement("div");
+        modalElement.className = "modal fade";
+        modalElement.id = id;
+        modalElement.tabIndex = -1;
+        modalElement.setAttribute("aria-labelledby", `${id}-label`);
+        modalElement.setAttribute("aria-hidden", "true");
 
-                lineItemsData.push({
-                    productId: row.dataset.productId || null,
-                    itemNo: itemNumberInput.value,
-                    manufacturer: manufacturerInput.value,
-                    description: descriptionInput.value,
-                    quantity: parseInt(quantityInput.value) || 1,
-                    marginPercent: marginInput.value.trim() === "" ? null : parseFloat(marginInput.value),
-                    isManual: row.dataset.isManual === "true",
-                    basePrice: row.dataset.isManual === "true" ? (parseFloat(row.dataset.basePriceForMargin) || 0) : undefined, 
-                    baseCurrency: row.dataset.isManual === "true" ? "USD" : undefined, 
-                    basePriceUSDForMarginApplication: parseFloat(row.dataset.basePriceForMargin) || 0 
-                });
-            });
-        }
-
-        const offerPayload = {
-            client: clientSelect.value,
-            validityDate: validityInput.value,
-            terms: termsInput.value,
-            status: statusSelect.value,
-            globalMarginPercent: parseFloat(globalMarginInput.value) || 0,
-            lineItems: lineItemsData
-        };
-
-        const method = currentOfferId ? "PUT" : "POST";
-        const endpoint = currentOfferId ? `/api/offers/${currentOfferId}` : "/api/offers";
-
-        showLoading(true);
-        showError("");
-
-        try {
-            const response = await fetch(endpoint, {
-                method: method,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(offerPayload)
-            });
-            showLoading(false);
-            const responseData = await response.json();
-
-            if (!response.ok) {
-                throw new Error(responseData.message || `HTTP error! status: ${response.status} - ${responseData.error || response.statusText}`);
-            }
-            alert("Offer saved successfully!");
-            showOfferList(); 
-        } catch (error) {
-            showLoading(false);
-            showError(`Error saving offer: ${error.message}`);
-            console.error("DEBUG (v24): Error in saveOffer:", error);
-        }
+        modalElement.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="${id}-label">${title}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${bodyContentHtml}
+                    </div>
+                    <div class="modal-footer">
+                        ${footerButtons.map(btn => `<button type="button" class="btn ${btn.className}" id="${btn.id}">${btn.text}</button>`).join("")}
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalElement);
+        return new bootstrap.Modal(modalElement);
     }
 
-    async function deleteOffer(offerId) {
-        if (!checkAuth() || !confirm("Are you sure you want to delete this offer?")) return;
-        const token = getAuthToken();
-        showLoading(true);
-        showError("");
-        try {
-            const response = await fetch(`/api/offers/${offerId}`, {
-                method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            showLoading(false);
-            if (!response.ok) {
-                const responseData = await response.json().catch(() => ({})); 
-                throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
-            }
-            alert("Offer deleted successfully!");
-            loadOffers(); 
-        } catch (error) {
-            showLoading(false);
-            showError(`Error deleting offer: ${error.message}`);
-            console.error("DEBUG (v24): Error in deleteOffer:", error);
-        }
-    }
-
-    async function handleBulkAdd() {
-        if (!checkAuth()) return;
-        const token = getAuthToken();
-        const manufacturer = bulkAddManufacturerSelect.value;
-        const partNumbersText = bulkAddPartNumbersTextarea.value;
-
-        if (!manufacturer) {
-            showBulkAddStatus("Please select a manufacturer.", true);
-            return;
-        }
-        if (!partNumbersText.trim()) {
-            showBulkAddStatus("Please enter part numbers.", true);
-            return;
-        }
-
-        const partNumbersArray = partNumbersText.split(/[,\n\s]+/).map(pn => pn.trim()).filter(pn => pn);
-        if (partNumbersArray.length === 0) {
-            showBulkAddStatus("No valid part numbers entered.", true);
-            return;
-        }
-
-        showLoading(true);
-        showBulkAddStatus("Processing items...");
-
-        try {
-            const response = await fetch("/api/products/bulk-by-manufacturer", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                // CORRECTED KEY: partNumbers instead of itemNumbers
-                body: JSON.stringify({ manufacturer, partNumbers: partNumbersArray })
-            });
-            showLoading(false);
-            const productsData = await response.json(); // Renamed to avoid conflict
-
-            if (!response.ok) {
-                // Use message from productsData if available, otherwise a generic error
-                throw new Error(productsData.message || "Error fetching products for bulk add.");
-            }
-
-            let itemsAddedCount = 0;
-            let itemsNotFound = [];
-            // Ensure productsData is an array before calling forEach
-            if (Array.isArray(productsData)) {
-                productsData.forEach(product => {
-                    // Check if product is an object and has an _id (found) or just itemNo (not found structure)
-                    if (product && product.data && product.data._id) { // Product found, data is in product.data
-                        const itemData = {
-                            productId: product.data._id,
-                            itemNo: product.data.itemNo,
-                            manufacturer: product.data.manufacturer,
-                            description: product.data.description,
-                            quantity: 1, 
-                            basePrice: product.data.basePrice, 
-                            baseCurrency: product.data.baseCurrency,
-                            basePriceUSDForMargin: product.data.basePriceUSD, 
-                            finalPriceUSD: 0, 
-                            lineTotalUSD: 0   
-                        };
-                        addLineItemRow(itemData, false);
-                        itemsAddedCount++;
-                    } else if (product && product.itemNumber && !product.found) { // Product not found by backend
-                        itemsNotFound.push(product.itemNumber);
-                    }
-                });
-            } else {
-                 // Handle cases where productsData might not be an array (e.g. error object)
-                 console.error("DEBUG (v24): productsData is not an array:", productsData);
-                 if(productsData.message) {
-                    throw new Error(productsData.message);
-                 } else {
-                    throw new Error("Unexpected response format from bulk add API.");
-                 }
-            }
+    async function promptForGlobalMargin() {
+        return new Promise((resolve) => {
+            const modalId = "global-margin-prompt-modal";
+            const title = "Set Global Margin for Bulk Add";
+            const bodyHtml = `
+                <p>Please enter the global margin percentage to apply to the newly added items. You can override this for individual items later.</p>
+                <div class="mb-3">
+                    <label for="bulk-add-global-margin-input" class="form-label">Global Margin (%):</label>
+                    <input type="number" class="form-control" id="bulk-add-global-margin-input" value="0" min="0" step="0.01">
+                </div>
+            `;
+            const footerButtons = [
+                { id: "confirm-global-margin-btn", text: "Confirm Margin", className: "btn-primary" }
+            ];
             
-            let statusMessage = `${itemsAddedCount} item(s) added.`;
-            if (itemsNotFound.length > 0) {
-                statusMessage += ` ${itemsNotFound.length} item(s) not found: ${itemsNotFound.join(", ")}.`;
-            }
-            showBulkAddStatus(statusMessage, itemsNotFound.length > 0 && itemsAddedCount === 0);
-            bulkAddPartNumbersTextarea.value = ""; 
+            const bsModal = createModal(modalId, title, bodyHtml, footerButtons);
 
-        } catch (error) {
-            showLoading(false);
-            showBulkAddStatus(`Error during bulk add: ${error.message}`, true);
-            console.error("DEBUG (v24): Error in handleBulkAdd:", error);
-        }
-    }
-
-    // --- Event Listeners ---
-    if (logoutButton) {
-        logoutButton.addEventListener("click", () => {
-            localStorage.removeItem("userInfo");
-            window.location.href = "/login.html";
+            document.getElementById("confirm-global-margin-btn").onclick = () => {
+                const marginValue = parseFloat(document.getElementById("bulk-add-global-margin-input").value);
+                bsModal.hide();
+                resolve(isNaN(marginValue) ? 0 : marginValue);
+            };
+            bsModal.show();
         });
     }
 
-    if (offerForm) {
-        offerForm.addEventListener("submit", saveOffer);
-    }
+    async function promptForSupplierSelection(partNumber, suppliers) {
+        return new Promise((resolve) => {
+            const modalId = `supplier-select-modal-${partNumber.replace(/[^a-zA-Z0-9]/g, "")}`;
+            const title = `Select Supplier for Part: ${partNumber}`;
+            let bodyHtml = `<p>Multiple suppliers found. Please select one:</p><div class="list-group">`;
 
-    if (addItemBtn) {
-        addItemBtn.addEventListener("click", () => addLineItemRow({}, true));
-    }
-
-    if (lineItemsBody) {
-        lineItemsBody.addEventListener("click", (event) => {
-            if (event.target.closest(".remove-item-btn")) {
-                event.target.closest("tr").remove();
-            }
-        });
-        lineItemsBody.addEventListener("change", (event) => {
-            if (event.target.classList.contains("item-quantity") || event.target.classList.contains("item-margin-percent")) {
-                updateAndDisplayItemPrice(event.target.closest("tr"));
-            }
-        });
-    }
-
-    if (globalMarginInput) {
-        globalMarginInput.addEventListener("change", recalculateAllPrices);
-    }
-
-    if (offerListContainer) { 
-        offerListContainer.addEventListener("click", (event) => {
-            const editButton = event.target.closest(".edit-offer-btn");
-            const deleteButton = event.target.closest(".delete-offer-btn");
-            const pdfButton = event.target.closest(".pdf-offer-btn");
-            const csvButton = event.target.closest(".csv-offer-btn");
-
-            if (editButton) {
-                const offerId = editButton.dataset.id;
-                loadOfferForEditing(offerId);
-            }
-            if (deleteButton) {
-                const offerId = deleteButton.dataset.id;
-                deleteOffer(offerId);
-            }
-            if (pdfButton) {
-                const offerId = pdfButton.dataset.id;
-                window.open(`/api/offers/${offerId}/pdf`, "_blank");
-            }
-            if (csvButton) {
-                const offerId = csvButton.dataset.id;
-                window.location.href = `/api/offers/${offerId}/csv`;
-            }
-        });
-    }
-
-    if (showCreateOfferFormBtn) {
-        showCreateOfferFormBtn.addEventListener("click", () => {
-            showOfferForm(null); 
-        });
-    }
-
-    if (cancelOfferBtn) {
-        cancelOfferBtn.addEventListener("click", () => {
-            showOfferList();
-        });
-    }
-
-    if (bulkAddBtn) {
-        bulkAddBtn.addEventListener("click", handleBulkAdd);
-    }
-
-    // --- Initial Load ---
-    if (!checkAuth()) return; 
-    
-    if (window.location.hash === "#new") {
-        showOfferForm(null); 
-    } else {
-        showOfferList(); 
-    }
-});
-
+            suppliers.forEach((supplier, index) => {
+                bodyHtml += `
+                    <label class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${supplier.supplier}</strong><br>
+                            <small>Original: ${supplier.originalPrice.toFixed(2)} ${supplier.originalCurrency}</small><br>
+                            <small>USD (incl. 3% protection): ${supplier.usdPriceWithProtection.toFixed(2)} USD</small>
+                            ${supplier.isWinner ? 
+(Content truncated due to size limit. Use line ranges to read in chunks)
